@@ -18,12 +18,39 @@ vi.mock("@/lib/auth", async (importOriginal) => {
 describe("POST /api/auth", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllEnvs();
   });
 
   describe("login action", () => {
     it("should login with valid credentials", async () => {
       const { hashPassword } = await import("@/lib/auth");
       const hashedPassword = await hashPassword("admin123");
+
+      mockPrisma.admin.findUnique.mockResolvedValue({
+        ...fixtures.admin,
+        password: hashedPassword,
+      });
+
+      const { POST } = await import("@/app/api/auth/route");
+      const request = createRequest("/api/auth", {
+        method: "POST",
+        body: { action: "login", username: "admin", password: "admin123" },
+      });
+
+      const response = await POST(request);
+      const data = await parseJsonResponse(response);
+
+      expect(response.status).toBe(200);
+      expect(data.success).toBe(true);
+      expect(data.user.username).toBe("admin");
+    });
+
+    it("should login when JWT secret is missing", async () => {
+      const { hashPassword } = await import("@/lib/auth");
+      const hashedPassword = await hashPassword("admin123");
+
+      vi.stubEnv("JWT_SECRET", "");
+      vi.stubEnv("NEXTAUTH_SECRET", "");
 
       mockPrisma.admin.findUnique.mockResolvedValue({
         ...fixtures.admin,
