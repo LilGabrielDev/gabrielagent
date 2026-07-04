@@ -258,7 +258,7 @@ Full dark theme with persistent preference, applied across all 19 pages.
 ### Prerequisites
 
 - **Node.js** 20+
-- **PostgreSQL** 16+
+- **Neon Serverless Postgres** or PostgreSQL 16+
 
 ### Option 1: npm
 
@@ -272,7 +272,7 @@ npm install
 
 # Set up environment
 cp .env.example .env
-# Edit .env with your database URL and API keys
+# Edit .env with your Neon DATABASE_URL, DIRECT_URL, and API keys
 
 # Run database migrations
 npx prisma migrate dev
@@ -284,6 +284,9 @@ npm run db:seed
 # Start the development server
 npm run dev
 ```
+
+For Neon, use the pooled connection string for `DATABASE_URL` and the direct connection string for `DIRECT_URL`.
+The pooled hostname includes `-pooler`; Prisma CLI commands use `DIRECT_URL` for migrations and schema pushes.
 
 ### Option 2: Docker Compose
 
@@ -395,7 +398,7 @@ Every API response includes enterprise headers: `X-Request-Id`, `X-RateLimit-Lim
 |-------|-----------|
 | **Framework** | Next.js 16 (App Router) |
 | **Language** | TypeScript 5 |
-| **Database** | PostgreSQL 16 + Prisma 7 |
+| **Database** | Neon Serverless Postgres / PostgreSQL 16 + Prisma 7 |
 | **UI** | Tailwind CSS 4 + Radix UI |
 | **AI** | OpenAI GPT (extensible to Claude, Ollama) |
 | **Voice TTS** | ElevenLabs |

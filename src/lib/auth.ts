@@ -13,7 +13,6 @@ function getJwtSecret(): string {
   return secret || "test-only-fallback-secret";
 }
 
-const JWT_SECRET = getJwtSecret();
 const TOKEN_NAME = "owly-token";
 const TOKEN_EXPIRY = "7d";
 
@@ -29,14 +28,14 @@ export async function verifyPassword(
 }
 
 export function generateToken(userId: string, role: string): string {
-  return jwt.sign({ userId, role }, JWT_SECRET, { expiresIn: TOKEN_EXPIRY });
+  return jwt.sign({ userId, role }, getJwtSecret(), { expiresIn: TOKEN_EXPIRY });
 }
 
 export function verifyToken(
   token: string
 ): { userId: string; role: string } | null {
   try {
-    return jwt.verify(token, JWT_SECRET) as { userId: string; role: string };
+    return jwt.verify(token, getJwtSecret()) as { userId: string; role: string };
   } catch {
     return null;
   }
