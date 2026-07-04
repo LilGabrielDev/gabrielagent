@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "vercel-build": "prisma generate && npx prisma db push && npx prisma db seed && next build",
+    "vercel-build": "prisma generate && npx prisma db push --accept-data-loss && npx prisma db seed && next build",
     "start": "next start",
     "postinstall": "prisma generate",
     "lint": "eslint",
@@ -16,7 +16,7 @@
     "format:check": "prettier --check .",
     "db:seed": "npx tsx prisma/seed.ts",
     "db:migrate": "npx prisma migrate dev",
-    "db:push": "npx prisma db push",
+    "db:push": "npx prisma db push --accept-data-loss",
     "db:studio": "npx prisma studio"
   },
   "prisma": {

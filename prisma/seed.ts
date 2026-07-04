@@ -3,6 +3,10 @@ import { PrismaNeon } from "@prisma/adapter-neon";
 import bcrypt from "bcryptjs";
 
 const connectionString =
+  process.env.DIRECT_URL ||
+  process.env.POSTGRES_URL_NON_POOLING ||
+  process.env.POSTGRES_PRISMA_URL ||
+  process.env.POSTGRES_URL ||
   process.env.DATABASE_URL ||
   "postgresql://postgres:postgres@localhost:5432/owly?schema=public";
 const adapter = new PrismaNeon({ connectionString });
