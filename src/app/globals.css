@@ -58,14 +58,14 @@
   --color-owly-success: var(--owly-success);
   --color-owly-warning: var(--owly-warning);
   --color-owly-danger: var(--owly-danger);
-  --font-sans: Arial, Helvetica, sans-serif;
-  --font-mono: "Courier New", Courier, monospace;
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
 }
 
 body {
   background: var(--owly-bg);
   color: var(--owly-text);
-  font-family: var(--font-sans);
+  font-family: var(--font-sans), system-ui, sans-serif;
 }
 
 /* Scrollbar */

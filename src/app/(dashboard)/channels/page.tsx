@@ -1,6 +1,7 @@
 "use client";
 
 import { Header } from "@/components/layout/header";
+import Image from "next/image";
 import {
   MessageCircle,
   Mail,
@@ -33,7 +34,7 @@ interface ChannelData {
   status: string;
 }
 
-type WhatsAppMode = "web" | "api";
+type WhatsAppMode = "web" | "api" | "pairing";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -159,7 +160,10 @@ function WhatsAppCard({
   );
   const [apiKey, setApiKey] = useState(cfg.apiKey || "");
   const [phoneNumber, setPhoneNumber] = useState(cfg.phoneNumber || "");
-  const [qrCode, setQrCode] = useState<string | null>(null);
+  const [pairingPhoneNumber, setPairingPhoneNumber] = useState(
+    cfg.pairingPhoneNumber || ""
+  );
+  const [connectionCode, setConnectionCode] = useState<string | null>(null);
   const [connecting, setConnecting] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const isConnected = channel.status === "connected";
@@ -173,16 +177,20 @@ function WhatsAppCard({
 
   const handleConnect = async () => {
     setConnecting(true);
-    setQrCode(null);
+    setConnectionCode(null);
     try {
       const res = await fetch("/api/channels/whatsapp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "connect" }),
+        body: JSON.stringify({
+          action: "connect",
+          mode,
+          phoneNumber: mode === "pairing" ? pairingPhoneNumber : phoneNumber,
+        }),
       });
       if (res.ok) {
         const data = await res.json();
-        if (data.qr) setQrCode(data.qr);
+        setConnectionCode(data.qr || data.pairingCode || null);
       }
       // Start polling for QR code / status updates
       if (pollRef.current) clearInterval(pollRef.current);
@@ -191,7 +199,7 @@ function WhatsAppCard({
           const statusRes = await fetch("/api/channels/whatsapp");
           if (statusRes.ok) {
             const status = await statusRes.json();
-            if (status.qr) setQrCode(status.qr);
+            setConnectionCode(status.qr || status.pairingCode || null);
             if (status.status === "connected") {
               if (pollRef.current) clearInterval(pollRef.current);
               setConnecting(false);
@@ -217,7 +225,7 @@ function WhatsAppCard({
             <div>
               <h3 className="font-semibold text-owly-text">WhatsApp</h3>
               <p className="text-xs text-owly-text-light mt-0.5">
-                Messaging via WhatsApp Web or API
+                Messaging via WhatsApp Web, API, or Pairing Code
               </p>
             </div>
           </div>
@@ -262,6 +270,19 @@ function WhatsAppCard({
               <Key className="h-4 w-4" />
               API
             </button>
+            <button
+              type="button"
+              onClick={() => setMode("pairing")}
+              className={cn(
+                "flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border transition-colors",
+                mode === "pairing"
+                  ? "border-green-300 bg-green-50 text-green-700"
+                  : "border-owly-border bg-owly-bg text-owly-text-light hover:bg-owly-primary-50 hover:text-owly-text"
+              )}
+            >
+              <PhoneCall className="h-4 w-4" />
+              Pairing Code
+            </button>
           </div>
         </div>
 
@@ -292,11 +313,13 @@ function WhatsAppCard({
             ) : (
               <div className="rounded-lg border border-owly-border bg-owly-bg p-6 flex flex-col items-center">
                 <div className="w-48 h-48 bg-white border-2 border-dashed border-owly-border rounded-lg flex items-center justify-center mb-3 overflow-hidden">
-                  {qrCode ? (
-                    <img
-                      src={qrCode}
+                  {connectionCode ? (
+                    <Image
+                      src={connectionCode}
                       alt="WhatsApp QR Code"
-                      className="w-full h-full object-contain"
+                      fill
+                      className="object-contain"
+                      sizes="192px"
                     />
                   ) : connecting ? (
                     <Loader2 className="h-8 w-8 animate-spin text-green-600" />
@@ -310,7 +333,7 @@ function WhatsAppCard({
                   )}
                 </div>
                 <p className="text-xs text-owly-text-light text-center max-w-[220px]">
-                  {qrCode
+                  {connectionCode
                     ? "Scan this QR code with WhatsApp on your phone to connect"
                     : "Click Connect to generate a QR code"}
                 </p>
@@ -326,6 +349,74 @@ function WhatsAppCard({
                     <Wifi className="h-4 w-4" />
                   )}
                   {connecting ? "Connecting..." : "Connect"}
+                </button>
+              </div>
+            )}
+          </div>
+        ) : mode === "pairing" ? (
+          <div className="space-y-4">
+            <FieldInput
+              label="WhatsApp Phone Number"
+              value={pairingPhoneNumber}
+              onChange={setPairingPhoneNumber}
+              placeholder="6281376552730"
+            />
+            {isConnected ? (
+              <div className="rounded-lg border border-green-200 bg-green-50 p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <CheckCircle className="h-4 w-4 text-green-600" />
+                  <span className="text-sm font-medium text-green-700">
+                    Session Active
+                  </span>
+                </div>
+                <p className="text-sm text-green-600">
+                  Pairing mode is connected.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => onAction("whatsapp", "disconnect")}
+                  className="mt-3 flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-600 bg-white border border-red-200 rounded-lg hover:bg-red-50 transition-colors"
+                >
+                  <WifiOff className="h-3.5 w-3.5" />
+                  Disconnect
+                </button>
+              </div>
+            ) : (
+              <div className="rounded-lg border border-owly-border bg-owly-bg p-6">
+                <div className="mb-4">
+                  <p className="text-sm font-semibold text-owly-text mb-2">
+                    Pairing Code
+                  </p>
+                  <p className="text-xs text-owly-text-light">
+                    A 6-digit code will be generated here. Enter it in WhatsApp Linked Devices {'>'} Link a device.
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-dashed border-owly-border bg-white p-4 text-center min-h-[120px] flex items-center justify-center">
+                  {connectionCode ? (
+                    <div className="font-mono text-sm text-owly-text break-words">{connectionCode}</div>
+                  ) : connecting ? (
+                    <Loader2 className="h-8 w-8 animate-spin text-green-600" />
+                  ) : (
+                    <div className="text-sm text-owly-text-light">
+                      Enter a phone number and press Connect to get a pairing code.
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs text-owly-text-light mt-3">
+                  After the code appears, open WhatsApp on your phone, go to Linked Devices, then Link a Device and type the code.
+                </p>
+                <button
+                  type="button"
+                  onClick={handleConnect}
+                  disabled={connecting || !pairingPhoneNumber}
+                  className="mt-4 w-full flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+                >
+                  {connecting ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Wifi className="h-4 w-4" />
+                  )}
+                  {connecting ? "Connecting..." : "Get Pairing Code"}
                 </button>
               </div>
             )}
@@ -365,7 +456,7 @@ function WhatsAppCard({
           onClick={() =>
             onSave(
               "whatsapp",
-              { mode, apiKey, phoneNumber },
+              { mode, apiKey, phoneNumber, pairingPhoneNumber },
               isActive
             )
           }

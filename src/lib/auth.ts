@@ -4,13 +4,16 @@ import { prisma } from "@/lib/prisma";
 import { cookies } from "next/headers";
 
 function getJwtSecret(): string {
-  const secret = process.env.JWT_SECRET || process.env.NEXTAUTH_SECRET;
-  if (!secret) {
-    return "test-only-fallback-secret";
+  const secret = process.env.JWT_SECRET;
+  if (!secret && process.env.NODE_ENV !== "test") {
+    throw new Error(
+      "JWT_SECRET environment variable is required. Set it before starting the application."
+    );
   }
-  return secret;
+  return secret || "test-only-fallback-secret";
 }
 
+const JWT_SECRET = getJwtSecret();
 const TOKEN_NAME = "owly-token";
 const TOKEN_EXPIRY = "7d";
 
@@ -26,14 +29,14 @@ export async function verifyPassword(
 }
 
 export function generateToken(userId: string, role: string): string {
-  return jwt.sign({ userId, role }, getJwtSecret(), { expiresIn: TOKEN_EXPIRY });
+  return jwt.sign({ userId, role }, JWT_SECRET, { expiresIn: TOKEN_EXPIRY });
 }
 
 export function verifyToken(
   token: string
 ): { userId: string; role: string } | null {
   try {
-    return jwt.verify(token, getJwtSecret()) as { userId: string; role: string };
+    return jwt.verify(token, JWT_SECRET) as { userId: string; role: string };
   } catch {
     return null;
   }

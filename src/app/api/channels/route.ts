@@ -5,18 +5,6 @@ import { requireAuth, isAuthenticated } from "@/lib/route-auth";
 
 const CHANNEL_TYPES = ["whatsapp", "email", "phone", "sms", "telegram"];
 
-function defaultChannels() {
-  return CHANNEL_TYPES.map((type) => ({
-    id: null,
-    type,
-    isActive: false,
-    config: {},
-    status: "disconnected",
-    createdAt: null,
-    updatedAt: null,
-  }));
-}
-
 export async function GET(request: NextRequest) {
   const auth = await requireAuth(request, "channels:read");
   if (!isAuthenticated(auth)) return auth;
@@ -27,17 +15,27 @@ export async function GET(request: NextRequest) {
     });
 
     const channelMap = new Map(channels.map((ch) => [ch.type, ch]));
-    const result = defaultChannels().map((defaultChannel) => {
-      const { type } = defaultChannel;
+    const result = CHANNEL_TYPES.map((type) => {
       const existing = channelMap.get(type);
       if (existing) return existing;
-      return defaultChannel;
+      return {
+        id: null,
+        type,
+        isActive: false,
+        config: {},
+        status: "disconnected",
+        createdAt: null,
+        updatedAt: null,
+      };
     });
 
     return NextResponse.json(result);
   } catch (error) {
     logger.error("Failed to fetch channels:", error);
-    return NextResponse.json(defaultChannels());
+    return NextResponse.json(
+      { error: "Failed to fetch channels" },
+      { status: 500 }
+    );
   }
 }
 

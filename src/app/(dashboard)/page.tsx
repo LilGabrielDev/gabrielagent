@@ -13,8 +13,6 @@ import {
 } from "lucide-react";
 import { formatRelativeTime, getChannelLabel, getStatusColor } from "@/lib/utils";
 
-export const dynamic = "force-dynamic";
-
 async function getStats() {
   const [
     totalConversations,

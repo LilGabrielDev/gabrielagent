@@ -79,7 +79,7 @@ export default function LoginPage() {
           className="mb-4"
         />
         <h1 className="text-2xl font-bold text-owly-text">
-          Welcome to Owly
+          Welcome to Gabriel
         </h1>
         <p className="text-owly-text-light text-sm mt-1">
           Sign in to your account
