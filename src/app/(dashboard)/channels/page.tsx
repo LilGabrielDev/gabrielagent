@@ -175,6 +175,26 @@ function WhatsAppCard({
     };
   }, []);
 
+  const applyWhatsAppStatus = (status: {
+    status?: string;
+    qr?: string | null;
+    pairingCode?: string | null;
+  }) => {
+    const nextCode = status.qr || status.pairingCode || null;
+    setConnectionCode(nextCode);
+
+    if (mode === "pairing" && status.status === "pairing_ready" && status.pairingCode) {
+      setConnecting(false);
+      return;
+    }
+
+    if (status.status === "connected") {
+      if (pollRef.current) clearInterval(pollRef.current);
+      setConnecting(false);
+      onAction("whatsapp", "connect");
+    }
+  };
+
   const handleConnect = async () => {
     setConnecting(true);
     setConnectionCode(null);
@@ -190,7 +210,7 @@ function WhatsAppCard({
       });
       if (res.ok) {
         const data = await res.json();
-        setConnectionCode(data.qr || data.pairingCode || null);
+        applyWhatsAppStatus(data);
       }
       // Start polling for QR code / status updates
       if (pollRef.current) clearInterval(pollRef.current);
@@ -199,12 +219,7 @@ function WhatsAppCard({
           const statusRes = await fetch("/api/channels/whatsapp");
           if (statusRes.ok) {
             const status = await statusRes.json();
-            setConnectionCode(status.qr || status.pairingCode || null);
-            if (status.status === "connected") {
-              if (pollRef.current) clearInterval(pollRef.current);
-              setConnecting(false);
-              onAction("whatsapp", "connect");
-            }
+            applyWhatsAppStatus(status);
           }
         } catch { /* ignore polling errors */ }
       }, 3000);
@@ -408,7 +423,7 @@ function WhatsAppCard({
                 <button
                   type="button"
                   onClick={handleConnect}
-                  disabled={connecting || !pairingPhoneNumber}
+                  disabled={connecting || !pairingPhoneNumber || Boolean(connectionCode)}
                   className="mt-4 w-full flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
                 >
                   {connecting ? (
@@ -416,7 +431,7 @@ function WhatsAppCard({
                   ) : (
                     <Wifi className="h-4 w-4" />
                   )}
-                  {connecting ? "Connecting..." : "Get Pairing Code"}
+                  {connecting ? "Connecting..." : connectionCode ? "Code Ready" : "Get Pairing Code"}
                 </button>
               </div>
             )}
