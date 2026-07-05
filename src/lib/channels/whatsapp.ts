@@ -21,6 +21,10 @@ let connectionStatus: "disconnected" | "qr_ready" | "pairing_ready" | "connectin
 let statusMessage = "";
 let currentMode: "web" | "pairing" = "web";
 
+const PAIRING_CODE_ENDPOINT =
+  process.env.WHATSAPP_PAIRING_CODE_ENDPOINT ||
+  "https://knight-bot-paircode.onrender.com/code";
+
 export function getWhatsAppStatus() {
   return {
     status: connectionStatus,
@@ -36,6 +40,45 @@ export async function initWhatsApp(mode: "web" | "pairing" = "web", phoneNumber?
     return initWhatsAppPairing(phoneNumber);
   }
   return initWhatsAppWeb();
+}
+
+function normalizePairingPhoneNumber(phoneNumber: string): string {
+  return phoneNumber.replace(/[^0-9]/g, "");
+}
+
+function formatPairingCode(code: string): string {
+  const normalized = String(code).replace(/[^a-zA-Z0-9]/g, "");
+  return normalized.match(/.{1,4}/g)?.join("-") || String(code);
+}
+
+async function requestPairingCodeFromLink(phoneNumber: string): Promise<string> {
+  const url = new URL(PAIRING_CODE_ENDPOINT);
+  url.searchParams.set("number", phoneNumber);
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 20000);
+
+  try {
+    const response = await fetch(url, {
+      headers: { Accept: "application/json" },
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Pairing code service returned ${response.status}`);
+    }
+
+    const data = (await response.json()) as { code?: unknown };
+    const code = typeof data.code === "string" ? data.code.trim() : "";
+
+    if (!code || code.toLowerCase() === "service unavailable") {
+      throw new Error("Pairing code service unavailable");
+    }
+
+    return formatPairingCode(code);
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 async function initWhatsAppWeb(): Promise<void> {
@@ -173,7 +216,9 @@ async function initWhatsAppPairing(phoneNumber?: string): Promise<void> {
     return;
   }
 
-  if (!phoneNumber) {
+  const normalizedPhoneNumber = phoneNumber ? normalizePairingPhoneNumber(phoneNumber) : "";
+
+  if (!normalizedPhoneNumber) {
     throw new Error("Phone number is required for pairing mode");
   }
 
@@ -243,14 +288,24 @@ async function initWhatsAppPairing(phoneNumber?: string): Promise<void> {
   });
 
   try {
-    const code = await sock.requestPairingCode(phoneNumber);
-    pairingCode = code?.match(/.{1,4}/g)?.join("-") || String(code);
+    pairingCode = await requestPairingCodeFromLink(normalizedPhoneNumber);
     connectionStatus = "pairing_ready";
     statusMessage = "Enter the pairing code in WhatsApp Linked Devices";
+    logger.info("[WhatsApp] Pairing code received from link service");
   } catch (error) {
-    logger.error("[WhatsApp] Failed to request pairing code:", error);
-    connectionStatus = "error";
-    statusMessage = "Failed to generate pairing code";
+    logger.error("[WhatsApp] Failed to request pairing code from link service:", error);
+
+    try {
+      const code = await sock.requestPairingCode(normalizedPhoneNumber);
+      pairingCode = formatPairingCode(String(code));
+      connectionStatus = "pairing_ready";
+      statusMessage = "Enter the pairing code in WhatsApp Linked Devices";
+      logger.info("[WhatsApp] Pairing code received from local Baileys socket");
+    } catch (fallbackError) {
+      logger.error("[WhatsApp] Failed to request pairing code:", fallbackError);
+      connectionStatus = "error";
+      statusMessage = "Failed to generate pairing code";
+    }
   }
 
   baileysSocket = sock;
