@@ -24,6 +24,7 @@ import {
   Webhook,
   ChevronLeft,
   ChevronRight,
+  MonitorCog,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -61,6 +62,7 @@ const sections: NavSection[] = [
     title: "Channels",
     items: [
       { name: "Channels", href: "/channels", icon: Radio },
+      { name: "Katababump", href: "/katababump", icon: MonitorCog },
       { name: "Webhooks", href: "/webhooks", icon: Webhook },
     ],
   },
