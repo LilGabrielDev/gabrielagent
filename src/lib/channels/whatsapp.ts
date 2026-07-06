@@ -1,4 +1,11 @@
 import type { Client, Message } from "whatsapp-web.js";
+import {
+  default as makeWASocket,
+  useMultiFileAuthState as createMultiFileAuthState,
+  fetchLatestBaileysVersion,
+  makeCacheableSignalKeyStore,
+} from "@whiskeysockets/baileys";
+import pino from "pino";
 import { prisma } from "@/lib/prisma";
 import { chat, createNewConversation } from "@/lib/ai/engine";
 import { logger } from "@/lib/logger";
@@ -6,6 +13,7 @@ import { resolveCustomer } from "@/lib/customer-resolver";
 import { extractPairingCode } from "@/lib/channels/pairing-code";
 
 let whatsappClient: Client | null = null;
+let baileysSocket: { requestPairingCode?: (phone: string) => Promise<string> } | null = null;
 let currentQR: string | null = null;
 let pairingCode: string | null = null;
 let connectionStatus: "disconnected" | "qr_ready" | "pairing_ready" | "connecting" | "connected" | "error" = "disconnected";
@@ -235,48 +243,98 @@ async function initWhatsAppPairing(phoneNumber?: string): Promise<void> {
   currentQR = null;
   currentPairingPhoneNumber = normalizedPhoneNumber;
 
-  try {
+  tr// Try knight service first
+    logger.info("[WhatsApp] Attempting to get pairing code from knight service...");
     pairingCode = await requestPairingCodeFromLink(normalizedPhoneNumber);
     connectionStatus = "pairing_ready";
     statusMessage = "Enter the pairing code in WhatsApp Linked Devices";
     logger.info("[WhatsApp] Pairing code received from link service");
+  } catch (knightError) {
+    logger.warn(
+      "[WhatsApp] Knight service failed, trying local Baileys fallback:",
+      knightError
+    );
 
-    await prisma.channel.upsert({
-      where: { type: "whatsapp" },
-      update: {
-        isActive: false,
-        status: "pairing_ready",
-        config: {
-          mode: "pairing",
-          pairingPhoneNumber: normalizedPhoneNumber,
-          pairingCodeEndpoint: PAIRING_CODE_ENDPOINT,
-          sessionStorage: "remote-mongodb",
-        },
-      },
-      create: {
-        type: "whatsapp",
-        isActive: false,
-        status: "pairing_ready",
-        config: {
-          mode: "pairing",
-          pairingPhoneNumber: normalizedPhoneNumber,
-          pairingCodeEndpoint: PAIRING_CODE_ENDPOINT,
-          sessionStorage: "remote-mongodb",
-        },
-      },
-    });
-  } catch (error) {
-    logger.error("[WhatsApp] Failed to request pairing code from link service:", error);
-    connectionStatus = "error";
-    statusMessage =
-      error instanceof Error ? error.message : "Failed to generate pairing code";
-    pairingCode = null;
+    // Fallback to local Baileys socket
+    try {
+      const { state, saveCreds } = await createMultiFileAuthState("./baileys-session");
+      const { version } = await fetchLatestBaileysVersion();
 
-    await prisma.channel.upsert({
-      where: { type: "whatsapp" },
-      update: { isActive: false, status: "error" },
-      create: { type: "whatsapp", isActive: false, status: "error" },
-    });
+      const sock = makeWASocket({
+        version,
+        logger: pino({ level: "silent" }),
+        printQRInTerminal: false,
+        browser: ["Vercel", "Bot", "1.0.0"],
+        auth: {
+          creds: state.creds,
+          keys: makeCacheableSignalKeyStore(
+            state.keys,
+            pino({ level: "fatal" }).child({ level: "fatal" })
+          ),
+        },
+        generateHighQualityLinkPreview: true,
+        syncFullHistory: false,
+        defaultQueryTimeoutMs: 60000,
+        connectTimeoutMs: 60000,
+        keepAliveIntervalMs: 10000,
+      });
+
+      baileysSocket = sock;
+
+      const code = await sock.requestPairingCode(normalizedPhoneNumber);
+      pairingCode = formatPairingCode(String(code));
+      connectionStatus = "pairing_ready";
+      statusMessage = "Enter the pairing code in WhatsApp Linked Devices";
+      logger.info("[WhatsApp] Pairing code received from local Baileys socket");
+    } catch (baileyError) {
+      logger.error("[WhatsApp] All pairing methods failed:", baileyError);
+      connectionStatus = "error";
+      statusMessage =
+        baileyError instanceof Error
+          ? baileyError.message
+          : "Failed to generate pairing code - both remote and local methods failed";
+      pairingCode = null;
+  if (baileysSocket?.requestPairingCode) {
+    try {
+      baileysSocket = null;
+    } catch {}
+  }
+
+      baileysSocket = null;
+
+      await prisma.channel.upsert({
+        where: { type: "whatsapp" },
+        update: { isActive: false, status: "error" },
+        create: { type: "whatsapp", isActive: false, status: "error" },
+      });
+      return;
+    }
+  }
+
+  await prisma.channel.upsert({
+    where: { type: "whatsapp" },
+    update: {
+      isActive: false,
+      status: "pairing_ready",
+      config: {
+        mode: "pairing",
+        pairingPhoneNumber: normalizedPhoneNumber,
+        pairingCodeEndpoint: PAIRING_CODE_ENDPOINT,
+        sessionStorage: "remote-mongodb",
+      },
+    },
+    create: {
+      type: "whatsapp",
+      isActive: false,
+      status: "pairing_ready",
+      config: {
+        mode: "pairing",
+        pairingPhoneNumber: normalizedPhoneNumber,
+        pairingCodeEndpoint: PAIRING_CODE_ENDPOINT,
+        sessionStorage: "remote-mongodb",
+      },
+    },
+  }); });
   }
 }
 
