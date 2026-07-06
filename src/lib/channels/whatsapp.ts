@@ -23,7 +23,7 @@ let currentPairingPhoneNumber = "";
 
 const PAIRING_CODE_ENDPOINT =
   process.env.WHATSAPP_PAIRING_CODE_ENDPOINT ||
-  "https://knight-bot-paircode.onrender.com/code";
+  `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/channels/whatsapp/pair-code`;
 
 export function getWhatsAppStatus() {
   return {
