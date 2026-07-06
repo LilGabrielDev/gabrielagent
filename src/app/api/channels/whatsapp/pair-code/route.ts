@@ -20,8 +20,12 @@ import {
  */
 export async function GET(request: Request) {
   try {
-    // Initialize MongoDB session storage
-    await initializeMongoSession();
+    // Initialize MongoDB session storage (non-blocking, handles failures gracefully)
+    try {
+      await initializeMongoSession();
+    } catch (mongoError) {
+      logger.warn("[Pairing Code] MongoDB initialization failed, continuing without session storage:", mongoError);
+    }
 
     const { searchParams } = new URL(request.url);
     const phoneNumber = searchParams.get("number");
@@ -54,11 +58,15 @@ export async function GET(request: Request) {
       );
     }
 
-    // Save to MongoDB
-    await savePairingSession(normalizedPhone, pairingCode, {
-      requestedAt: new Date().toISOString(),
-      expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(), // 5 minutes
-    });
+    // Try to save to MongoDB, but don't fail if it's not available
+    try {
+      await savePairingSession(normalizedPhone, pairingCode, {
+        requestedAt: new Date().toISOString(),
+        expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(), // 5 minutes
+      });
+    } catch (mongoError) {
+      logger.warn("[Pairing Code] Failed to save session to MongoDB:", mongoError);
+    }
 
     logger.info(`[Pairing Code] Generated and saved code for ${normalizedPhone}`);
 
