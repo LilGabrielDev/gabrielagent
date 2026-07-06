@@ -24,7 +24,8 @@ export function extractPairingCode(payload: unknown): string | null {
   }
 
   if (payload && typeof payload === "object") {
-    const candidates = [payload.code, payload.pairingCode, payload.data, payload.message];
+    const record = payload as Record<string, unknown>;
+    const candidates = [record.code, record.pairingCode, record.data, record.message];
     for (const candidate of candidates) {
       if (typeof candidate === "string") {
         const extracted = extractPairingCode(candidate);

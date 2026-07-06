@@ -73,6 +73,11 @@ function ToastItem({
   const [exiting, setExiting] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const handleDismiss = useCallback(() => {
+    setExiting(true);
+    setTimeout(() => onDismiss(toast.id), 200);
+  }, [onDismiss, toast.id]);
+
   useEffect(() => {
     requestAnimationFrame(() => setVisible(true));
     timerRef.current = setTimeout(() => {
@@ -81,13 +86,7 @@ function ToastItem({
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const handleDismiss = useCallback(() => {
-    setExiting(true);
-    setTimeout(() => onDismiss(toast.id), 200);
-  }, [onDismiss, toast.id]);
+  }, [handleDismiss]);
 
   const Icon = iconMap[toast.type];
 
