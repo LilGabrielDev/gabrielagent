@@ -72,8 +72,8 @@ export default function LoginPage() {
     <div className="bg-owly-surface rounded-2xl shadow-lg border border-owly-border p-8">
       <div className="flex flex-col items-center mb-8">
         <Image
-          src="/owly.png"
-          alt="Owly"
+          src="/gabriel.png"
+          alt="Gabriel"
           width={56}
           height={56}
           className="mb-4"

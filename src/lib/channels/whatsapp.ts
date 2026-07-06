@@ -19,7 +19,7 @@ let currentQR: string | null = null;
 let pairingCode: string | null = null;
 let connectionStatus: "disconnected" | "qr_ready" | "pairing_ready" | "connecting" | "connected" | "error" = "disconnected";
 let statusMessage = "";
-let currentMode: "web" | "pairing" = "web";
+let currentMode: "web" | "pairing" = "pairing";
 
 const PAIRING_CODE_ENDPOINT =
   process.env.WHATSAPP_PAIRING_CODE_ENDPOINT ||
@@ -35,7 +35,7 @@ export function getWhatsAppStatus() {
   };
 }
 
-export async function initWhatsApp(mode: "web" | "pairing" = "web", phoneNumber?: string): Promise<void> {
+export async function initWhatsApp(mode: "web" | "pairing" = "pairing", phoneNumber?: string): Promise<void> {
   if (mode === "pairing") {
     return initWhatsAppPairing(phoneNumber);
   }

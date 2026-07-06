@@ -175,7 +175,7 @@ export default function SetupPage() {
       {/* Header */}
       <div className="bg-owly-primary-50 border-b border-owly-border px-8 pt-6 pb-4">
         <div className="flex items-center gap-3 mb-5">
-          <Image src="/owly.png" alt="Owly" width={40} height={40} />
+          <Image src="/gabriel.png" alt="Owly" width={40} height={40} />
           <div>
             <h1 className="text-lg font-bold text-owly-text">Set Up Owly</h1>
             <p className="text-xs text-owly-text-light">
