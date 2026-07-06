@@ -243,7 +243,8 @@ async function initWhatsAppPairing(phoneNumber?: string): Promise<void> {
   currentQR = null;
   currentPairingPhoneNumber = normalizedPhoneNumber;
 
-  tr// Try knight service first
+  try {
+    // Try knight service first
     logger.info("[WhatsApp] Attempting to get pairing code from knight service...");
     pairingCode = await requestPairingCodeFromLink(normalizedPhoneNumber);
     connectionStatus = "pairing_ready";
@@ -294,12 +295,6 @@ async function initWhatsAppPairing(phoneNumber?: string): Promise<void> {
           ? baileyError.message
           : "Failed to generate pairing code - both remote and local methods failed";
       pairingCode = null;
-  if (baileysSocket?.requestPairingCode) {
-    try {
-      baileysSocket = null;
-    } catch {}
-  }
-
       baileysSocket = null;
 
       await prisma.channel.upsert({
@@ -334,8 +329,7 @@ async function initWhatsAppPairing(phoneNumber?: string): Promise<void> {
         sessionStorage: "remote-mongodb",
       },
     },
-  }); });
-  }
+  });
 }
 
 export async function disconnectWhatsApp(): Promise<void> {
