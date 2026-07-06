@@ -408,7 +408,14 @@ function WhatsAppCard({
                 </div>
                 <div className="rounded-2xl border border-dashed border-owly-border bg-white p-4 text-center min-h-[120px] flex items-center justify-center">
                   {connectionCode ? (
-                    <div className="font-mono text-sm text-owly-text break-words">{connectionCode}</div>
+                    <div className="space-y-2">
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-owly-text-light">
+                        Pairing Code
+                      </div>
+                      <div className="font-mono text-2xl font-semibold tracking-[0.35em] text-owly-text break-words">
+                        {connectionCode}
+                      </div>
+                    </div>
                   ) : connecting ? (
                     <Loader2 className="h-8 w-8 animate-spin text-green-600" />
                   ) : (

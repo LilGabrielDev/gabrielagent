@@ -3,7 +3,7 @@ import * as qrcode from "qrcode";
 import pino from "pino";
 import {
   default as makeWASocket,
-  useMultiFileAuthState,
+  useMultiFileAuthState as createMultiFileAuthState,
   DisconnectReason,
   fetchLatestBaileysVersion,
   makeCacheableSignalKeyStore,
@@ -12,9 +12,10 @@ import { prisma } from "@/lib/prisma";
 import { chat, createNewConversation } from "@/lib/ai/engine";
 import { logger } from "@/lib/logger";
 import { resolveCustomer } from "@/lib/customer-resolver";
+import { extractPairingCode } from "@/lib/channels/pairing-code";
 
 let whatsappClient: Client | null = null;
-let baileysSocket: any = null;
+let baileysSocket: { logout?: () => Promise<void> } | null = null;
 let currentQR: string | null = null;
 let pairingCode: string | null = null;
 let connectionStatus: "disconnected" | "qr_ready" | "pairing_ready" | "connecting" | "connected" | "error" = "disconnected";
@@ -48,7 +49,10 @@ function normalizePairingPhoneNumber(phoneNumber: string): string {
 
 function formatPairingCode(code: string): string {
   const normalized = String(code).replace(/[^a-zA-Z0-9]/g, "");
-  return normalized.match(/.{1,4}/g)?.join("-") || String(code);
+  if (normalized.length <= 8) {
+    return normalized;
+  }
+  return normalized.match(/.{1,4}/g)?.join("-") || normalized;
 }
 
 async function requestPairingCodeFromLink(phoneNumber: string): Promise<string> {
@@ -68,14 +72,24 @@ async function requestPairingCodeFromLink(phoneNumber: string): Promise<string> 
       throw new Error(`Pairing code service returned ${response.status}`);
     }
 
-    const data = (await response.json()) as { code?: unknown };
-    const code = typeof data.code === "string" ? data.code.trim() : "";
+    const contentType = response.headers.get("content-type") || "";
+    const rawBody = await response.text();
+    let payload: unknown = rawBody;
 
-    if (!code || code.toLowerCase() === "service unavailable") {
+    if (contentType.includes("application/json")) {
+      try {
+        payload = JSON.parse(rawBody);
+      } catch {
+        payload = rawBody;
+      }
+    }
+
+    const extractedCode = extractPairingCode(payload);
+    if (!extractedCode) {
       throw new Error("Pairing code service unavailable");
     }
 
-    return formatPairingCode(code);
+    return formatPairingCode(extractedCode);
   } finally {
     clearTimeout(timeout);
   }
@@ -228,7 +242,7 @@ async function initWhatsAppPairing(phoneNumber?: string): Promise<void> {
   pairingCode = null;
   currentQR = null;
 
-  const { state, saveCreds } = await useMultiFileAuthState("./baileys-session");
+  const { state, saveCreds } = await createMultiFileAuthState("./baileys-session");
   const { version } = await fetchLatestBaileysVersion();
 
   const sock = makeWASocket({
@@ -249,8 +263,9 @@ async function initWhatsAppPairing(phoneNumber?: string): Promise<void> {
 
   sock.ev.on("creds.update", saveCreds);
 
-  sock.ev.on("connection.update", async (update: any) => {
-    const { connection, lastDisconnect } = update;
+  sock.ev.on("connection.update", async (update: Record<string, unknown>) => {
+    const connection = update.connection as string | undefined;
+    const lastDisconnect = update.lastDisconnect as { error?: { output?: { statusCode?: number }; message?: string } } | undefined;
 
     if (connection === "open") {
       logger.info("[WhatsApp] Pairing socket connected");
@@ -317,7 +332,7 @@ export async function disconnectWhatsApp(): Promise<void> {
     whatsappClient = null;
   }
 
-  if (baileysSocket) {
+  if (baileysSocket?.logout) {
     try {
       await baileysSocket.logout();
     } catch {}
