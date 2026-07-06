@@ -1,18 +1,55 @@
 "use server";
 
-import { MongoClient, Db, Collection } from "mongodb";
+import mongoose, { Schema, Document } from "mongoose";
 import { logger } from "@/lib/logger";
 
-let mongoClient: MongoClient | null = null;
-let db: Db | null = null;
-let sessionsCollection: Collection | null = null;
-
 const MONGO_URL = process.env.MONGODB_URL || "";
-const DB_NAME = "whatsapp_bot";
-const COLLECTION_NAME = "pairing_sessions";
+
+interface IPairingSession extends Document {
+  phoneNumber: string;
+  pairingCode: string;
+  status: "pairing_ready" | "connected" | "failed" | "disconnected";
+  sessionData?: Record<string, unknown>;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const pairingSessionSchema = new Schema<IPairingSession>(
+  {
+    phoneNumber: {
+      type: String,
+      required: true,
+      unique: true,
+      index: true,
+    },
+    pairingCode: {
+      type: String,
+      required: true,
+    },
+    status: {
+      type: String,
+      enum: ["pairing_ready", "connected", "failed", "disconnected"],
+      default: "pairing_ready",
+    },
+    sessionData: {
+      type: Schema.Types.Mixed,
+      default: {},
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now,
+      expires: 86400, // Auto-delete after 24 hours
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
+let PairingSession: mongoose.Model<IPairingSession> | null = null;
 
 export async function initializeMongoSession(): Promise<void> {
-  if (mongoClient && db) {
+  if (mongoose.connection.readyState === 1) {
     logger.info("[MongoDB] Already connected");
     return;
   }
@@ -23,24 +60,17 @@ export async function initializeMongoSession(): Promise<void> {
   }
 
   try {
-    mongoClient = new MongoClient(MONGO_URL);
-    await mongoClient.connect();
-    db = mongoClient.db(DB_NAME);
-    sessionsCollection = db.collection(COLLECTION_NAME);
+    await mongoose.connect(MONGO_URL, {
+      dbName: "whatsapp_bot",
+    });
 
-    // Create index on phoneNumber for faster lookups
-    await sessionsCollection.createIndex({ phoneNumber: 1 });
-    await sessionsCollection.createIndex(
-      { createdAt: 1 },
-      { expireAfterSeconds: 86400 } // Auto-delete after 24 hours
-    );
+    PairingSession =
+      mongoose.models.PairingSession ||
+      mongoose.model<IPairingSession>("PairingSession", pairingSessionSchema);
 
     logger.info("[MongoDB] Connected and initialized");
   } catch (error) {
     logger.error("[MongoDB] Failed to initialize:", error);
-    mongoClient = null;
-    db = null;
-    sessionsCollection = null;
   }
 }
 
@@ -49,23 +79,19 @@ export async function savePairingSession(
   pairingCode: string,
   sessionData: Record<string, unknown> = {}
 ): Promise<boolean> {
-  if (!sessionsCollection) {
-    logger.warn("[MongoDB] Session collection not available, skipping save");
+  if (!PairingSession) {
+    logger.warn("[MongoDB] Model not initialized, skipping save");
     return false;
   }
 
   try {
-    await sessionsCollection.updateOne(
+    await PairingSession.updateOne(
       { phoneNumber },
       {
-        $set: {
-          phoneNumber,
-          pairingCode,
-          status: "pairing_ready",
-          sessionData,
-          updatedAt: new Date(),
-          createdAt: new Date(),
-        },
+        phoneNumber,
+        pairingCode,
+        status: "pairing_ready",
+        sessionData,
       },
       { upsert: true }
     );
@@ -81,13 +107,13 @@ export async function savePairingSession(
 export async function getPairingSession(
   phoneNumber: string
 ): Promise<Record<string, unknown> | null> {
-  if (!sessionsCollection) {
-    logger.warn("[MongoDB] Session collection not available, skipping retrieval");
+  if (!PairingSession) {
+    logger.warn("[MongoDB] Model not initialized, skipping retrieval");
     return null;
   }
 
   try {
-    const session = await sessionsCollection.findOne({ phoneNumber });
+    const session = await PairingSession.findOne({ phoneNumber }).lean();
     return session ? (session as Record<string, unknown>) : null;
   } catch (error) {
     logger.error("[MongoDB] Failed to get pairing session:", error);
@@ -100,20 +126,17 @@ export async function updatePairingStatus(
   status: "pairing_ready" | "connected" | "failed" | "disconnected",
   additionalData: Record<string, unknown> = {}
 ): Promise<boolean> {
-  if (!sessionsCollection) {
-    logger.warn("[MongoDB] Session collection not available, skipping update");
+  if (!PairingSession) {
+    logger.warn("[MongoDB] Model not initialized, skipping update");
     return false;
   }
 
   try {
-    await sessionsCollection.updateOne(
+    await PairingSession.updateOne(
       { phoneNumber },
       {
-        $set: {
-          status,
-          ...additionalData,
-          updatedAt: new Date(),
-        },
+        status,
+        ...additionalData,
       }
     );
 
@@ -126,16 +149,11 @@ export async function updatePairingStatus(
 }
 
 export async function closeMongoSession(): Promise<void> {
-  if (mongoClient) {
-    try {
-      await mongoClient.close();
-      logger.info("[MongoDB] Connection closed");
-    } catch (error) {
-      logger.error("[MongoDB] Failed to close connection:", error);
-    } finally {
-      mongoClient = null;
-      db = null;
-      sessionsCollection = null;
-    }
+  try {
+    await mongoose.disconnect();
+    logger.info("[MongoDB] Connection closed");
+    PairingSession = null;
+  } catch (error) {
+    logger.error("[MongoDB] Failed to close connection:", error);
   }
 }
