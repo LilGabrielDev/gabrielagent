@@ -6,6 +6,18 @@ describe("extractPairingCode", () => {
     expect(extractPairingCode({ code: "123456" })).toBe("123456");
   });
 
+  it("parses nested service payloads", () => {
+    expect(extractPairingCode({ data: { pairingCode: "123-456" } })).toBe(
+      "123456"
+    );
+  });
+
+  it("parses result and pairCode service payloads", () => {
+    expect(extractPairingCode({ result: { pairCode: "ABCD-1234" } })).toBe(
+      "ABCD1234"
+    );
+  });
+
   it("parses a plain-text knight-style payload", () => {
     expect(extractPairingCode("Pairing code: 123456")).toBe("123456");
   });

@@ -164,6 +164,7 @@ function WhatsAppCard({
     cfg.pairingPhoneNumber || ""
   );
   const [connectionCode, setConnectionCode] = useState<string | null>(null);
+  const [connectionMessage, setConnectionMessage] = useState<string | null>(null);
   const [connecting, setConnecting] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const isConnected = channel.status === "connected";
@@ -179,11 +180,19 @@ function WhatsAppCard({
     status?: string;
     qr?: string | null;
     pairingCode?: string | null;
+    message?: string | null;
   }) => {
     const nextCode = status.qr || status.pairingCode || null;
     setConnectionCode(nextCode);
+    setConnectionMessage(status.message || null);
 
     if (mode === "pairing" && status.status === "pairing_ready" && status.pairingCode) {
+      setConnecting(false);
+      return;
+    }
+
+    if (status.status === "error") {
+      if (pollRef.current) clearInterval(pollRef.current);
       setConnecting(false);
       return;
     }
@@ -198,6 +207,7 @@ function WhatsAppCard({
   const handleConnect = async () => {
     setConnecting(true);
     setConnectionCode(null);
+    setConnectionMessage(null);
     try {
       const res = await fetch("/api/channels/whatsapp", {
         method: "POST",
@@ -208,10 +218,13 @@ function WhatsAppCard({
           phoneNumber: mode === "pairing" ? pairingPhoneNumber : phoneNumber,
         }),
       });
-      if (res.ok) {
-        const data = await res.json();
-        applyWhatsAppStatus(data);
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        setConnectionMessage(data?.error || "Failed to connect WhatsApp");
+        setConnecting(false);
+        return;
       }
+      applyWhatsAppStatus(data);
       // Start polling for QR code / status updates
       if (pollRef.current) clearInterval(pollRef.current);
       pollRef.current = setInterval(async () => {
@@ -373,7 +386,11 @@ function WhatsAppCard({
             <FieldInput
               label="WhatsApp Phone Number"
               value={pairingPhoneNumber}
-              onChange={setPairingPhoneNumber}
+              onChange={(value) => {
+                setPairingPhoneNumber(value);
+                setConnectionCode(null);
+                setConnectionMessage(null);
+              }}
               placeholder="6281376552730"
             />
             {isConnected ? (
@@ -420,10 +437,16 @@ function WhatsAppCard({
                     <Loader2 className="h-8 w-8 animate-spin text-green-600" />
                   ) : (
                     <div className="text-sm text-owly-text-light">
-                      Enter a phone number and press Connect to get a pairing code.
+                      {connectionMessage ||
+                        "Enter a phone number and press Connect to get a pairing code."}
                     </div>
                   )}
                 </div>
+                {connectionMessage && connectionCode && (
+                  <p className="text-xs text-owly-text-light mt-3 text-center">
+                    {connectionMessage}
+                  </p>
+                )}
                 <p className="text-xs text-owly-text-light mt-3">
                   After the code appears, open WhatsApp on your phone, go to Linked Devices, then Link a Device and type the code.
                 </p>

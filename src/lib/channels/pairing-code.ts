@@ -1,6 +1,13 @@
 export type PairingCodePayload =
   | string
-  | { code?: unknown; pairingCode?: unknown; data?: unknown; message?: unknown };
+  | {
+      code?: unknown;
+      pairingCode?: unknown;
+      pairCode?: unknown;
+      data?: unknown;
+      result?: unknown;
+      message?: unknown;
+    };
 
 function cleanupCode(value: string): string {
   return value.replace(/[^a-zA-Z0-9]/g, "").trim();
@@ -23,25 +30,29 @@ export function extractPairingCode(payload: unknown): string | null {
     return cleaned.length >= 3 ? cleaned : null;
   }
 
+  if (Array.isArray(payload)) {
+    for (const item of payload) {
+      const extracted = extractPairingCode(item);
+      if (extracted) {
+        return extracted;
+      }
+    }
+  }
+
   if (payload && typeof payload === "object") {
     const record = payload as Record<string, unknown>;
-    const candidates = [record.code, record.pairingCode, record.data, record.message];
+    const candidates = [
+      record.code,
+      record.pairingCode,
+      record.pairCode,
+      record.data,
+      record.result,
+      record.message,
+    ];
     for (const candidate of candidates) {
-      if (typeof candidate === "string") {
-        const extracted = extractPairingCode(candidate);
-        if (extracted) {
-          return extracted;
-        }
-      }
-      if (candidate && typeof candidate === "object") {
-        const nested = candidate as Record<string, unknown>;
-        const nestedCode = nested.code ?? nested.pairingCode ?? nested.message;
-        if (typeof nestedCode === "string") {
-          const extracted = extractPairingCode(nestedCode);
-          if (extracted) {
-            return extracted;
-          }
-        }
+      const extracted = extractPairingCode(candidate);
+      if (extracted) {
+        return extracted;
       }
     }
   }

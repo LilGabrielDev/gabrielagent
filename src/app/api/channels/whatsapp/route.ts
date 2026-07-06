@@ -11,28 +11,34 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const body = await request.json();
-  const { action, mode, phoneNumber } = body;
+  try {
+    const body = await request.json();
+    const { action, mode, phoneNumber } = body;
 
-  if (action === "connect") {
-    if (mode === "pairing" && !phoneNumber) {
-      return NextResponse.json(
-        { error: "Phone number is required for pairing mode" },
-        { status: 400 }
-      );
+    if (action === "connect") {
+      if (mode === "pairing" && !phoneNumber) {
+        return NextResponse.json(
+          { error: "Phone number is required for pairing mode" },
+          { status: 400 }
+        );
+      }
+
+      await initWhatsApp(mode === "pairing" ? "pairing" : "web", phoneNumber);
+      const status = getWhatsAppStatus();
+      return NextResponse.json(status, {
+        status: status.status === "error" ? 502 : 200,
+      });
     }
 
-    await initWhatsApp(mode === "pairing" ? "pairing" : "web", phoneNumber);
-    // Wait a moment for QR / pairing code to generate
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    const status = getWhatsAppStatus();
-    return NextResponse.json(status);
-  }
+    if (action === "disconnect") {
+      await disconnectWhatsApp();
+      return NextResponse.json({ status: "disconnected" });
+    }
 
-  if (action === "disconnect") {
-    await disconnectWhatsApp();
-    return NextResponse.json({ status: "disconnected" });
+    return NextResponse.json({ error: "Invalid action" }, { status: 400 });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Failed to process WhatsApp action";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
-
-  return NextResponse.json({ error: "Invalid action" }, { status: 400 });
 }

@@ -1,13 +1,4 @@
-import { Client, LocalAuth, Message } from "whatsapp-web.js";
-import * as qrcode from "qrcode";
-import pino from "pino";
-import {
-  default as makeWASocket,
-  useMultiFileAuthState as createMultiFileAuthState,
-  DisconnectReason,
-  fetchLatestBaileysVersion,
-  makeCacheableSignalKeyStore,
-} from "@whiskeysockets/baileys";
+import type { Client, Message } from "whatsapp-web.js";
 import { prisma } from "@/lib/prisma";
 import { chat, createNewConversation } from "@/lib/ai/engine";
 import { logger } from "@/lib/logger";
@@ -15,12 +6,12 @@ import { resolveCustomer } from "@/lib/customer-resolver";
 import { extractPairingCode } from "@/lib/channels/pairing-code";
 
 let whatsappClient: Client | null = null;
-let baileysSocket: { logout?: () => Promise<void> } | null = null;
 let currentQR: string | null = null;
 let pairingCode: string | null = null;
 let connectionStatus: "disconnected" | "qr_ready" | "pairing_ready" | "connecting" | "connected" | "error" = "disconnected";
 let statusMessage = "";
 let currentMode: "web" | "pairing" = "pairing";
+let currentPairingPhoneNumber = "";
 
 const PAIRING_CODE_ENDPOINT =
   process.env.WHATSAPP_PAIRING_CODE_ENDPOINT ||
@@ -33,6 +24,7 @@ export function getWhatsAppStatus() {
     pairingCode,
     mode: currentMode,
     message: statusMessage,
+    phoneNumber: currentPairingPhoneNumber || null,
   };
 }
 
@@ -105,7 +97,12 @@ async function initWhatsAppWeb(): Promise<void> {
   connectionStatus = "connecting";
   statusMessage = "Initializing WhatsApp client...";
 
-  const client = new Client({
+  const [{ Client: WhatsAppClient, LocalAuth }, qrcode] = await Promise.all([
+    import("whatsapp-web.js"),
+    import("qrcode"),
+  ]);
+
+  const client = new WhatsAppClient({
     authStrategy: new LocalAuth({ dataPath: ".wwebjs_auth" }),
     puppeteer: {
       headless: true,
@@ -225,11 +222,6 @@ async function initWhatsAppWeb(): Promise<void> {
 }
 
 async function initWhatsAppPairing(phoneNumber?: string): Promise<void> {
-  if (baileysSocket) {
-    logger.info("[WhatsApp] Pairing socket already exists");
-    return;
-  }
-
   const normalizedPhoneNumber = phoneNumber ? normalizePairingPhoneNumber(phoneNumber) : "";
 
   if (!normalizedPhoneNumber) {
@@ -241,89 +233,51 @@ async function initWhatsAppPairing(phoneNumber?: string): Promise<void> {
   statusMessage = "Initializing WhatsApp pairing session...";
   pairingCode = null;
   currentQR = null;
-
-  const { state, saveCreds } = await createMultiFileAuthState("./baileys-session");
-  const { version } = await fetchLatestBaileysVersion();
-
-  const sock = makeWASocket({
-    version,
-    logger: pino({ level: "silent" }),
-    printQRInTerminal: false,
-    browser: ["Vercel", "Bot", "1.0.0"],
-    auth: {
-      creds: state.creds,
-      keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "fatal" }).child({ level: "fatal" })),
-    },
-    generateHighQualityLinkPreview: true,
-    syncFullHistory: false,
-    defaultQueryTimeoutMs: 60000,
-    connectTimeoutMs: 60000,
-    keepAliveIntervalMs: 10000,
-  });
-
-  sock.ev.on("creds.update", saveCreds);
-
-  sock.ev.on("connection.update", async (update: Record<string, unknown>) => {
-    const connection = update.connection as string | undefined;
-    const lastDisconnect = update.lastDisconnect as { error?: { output?: { statusCode?: number }; message?: string } } | undefined;
-
-    if (connection === "open") {
-      logger.info("[WhatsApp] Pairing socket connected");
-      pairingCode = null;
-      connectionStatus = "connected";
-      statusMessage = "Connected to WhatsApp";
-
-      await prisma.channel.upsert({
-        where: { type: "whatsapp" },
-        update: { isActive: true, status: "connected" },
-        create: { type: "whatsapp", isActive: true, status: "connected" },
-      });
-    }
-
-    if (connection === "close") {
-      const shouldReconnect = (lastDisconnect?.error)?.output?.statusCode !== DisconnectReason.loggedOut;
-      const reason = lastDisconnect?.error?.message || String(lastDisconnect?.error || "unknown");
-      logger.info(`[WhatsApp] Pairing socket disconnected: ${reason}`);
-      connectionStatus = "disconnected";
-      statusMessage = `Disconnected: ${reason}`;
-      baileysSocket = null;
-      pairingCode = null;
-      currentQR = null;
-
-      await prisma.channel.upsert({
-        where: { type: "whatsapp" },
-        update: { isActive: false, status: "disconnected" },
-        create: { type: "whatsapp", isActive: false, status: "disconnected" },
-      });
-
-      if (shouldReconnect) {
-        await initWhatsAppPairing(phoneNumber);
-      }
-    }
-  });
+  currentPairingPhoneNumber = normalizedPhoneNumber;
 
   try {
     pairingCode = await requestPairingCodeFromLink(normalizedPhoneNumber);
     connectionStatus = "pairing_ready";
     statusMessage = "Enter the pairing code in WhatsApp Linked Devices";
     logger.info("[WhatsApp] Pairing code received from link service");
+
+    await prisma.channel.upsert({
+      where: { type: "whatsapp" },
+      update: {
+        isActive: false,
+        status: "pairing_ready",
+        config: {
+          mode: "pairing",
+          pairingPhoneNumber: normalizedPhoneNumber,
+          pairingCodeEndpoint: PAIRING_CODE_ENDPOINT,
+          sessionStorage: "remote-mongodb",
+        },
+      },
+      create: {
+        type: "whatsapp",
+        isActive: false,
+        status: "pairing_ready",
+        config: {
+          mode: "pairing",
+          pairingPhoneNumber: normalizedPhoneNumber,
+          pairingCodeEndpoint: PAIRING_CODE_ENDPOINT,
+          sessionStorage: "remote-mongodb",
+        },
+      },
+    });
   } catch (error) {
     logger.error("[WhatsApp] Failed to request pairing code from link service:", error);
+    connectionStatus = "error";
+    statusMessage =
+      error instanceof Error ? error.message : "Failed to generate pairing code";
+    pairingCode = null;
 
-    try {
-      const code = await sock.requestPairingCode(normalizedPhoneNumber);
-      pairingCode = formatPairingCode(String(code));
-      connectionStatus = "pairing_ready";
-      statusMessage = "Enter the pairing code in WhatsApp Linked Devices";
-      logger.info("[WhatsApp] Pairing code received from local Baileys socket");
-    } catch (fallbackError) {
-      logger.error("[WhatsApp] Failed to request pairing code:", fallbackError);
-      connectionStatus = "error";
-      statusMessage = "Failed to generate pairing code";
-    }
+    await prisma.channel.upsert({
+      where: { type: "whatsapp" },
+      update: { isActive: false, status: "error" },
+      create: { type: "whatsapp", isActive: false, status: "error" },
+    });
   }
-
-  baileysSocket = sock;
 }
 
 export async function disconnectWhatsApp(): Promise<void> {
@@ -332,17 +286,17 @@ export async function disconnectWhatsApp(): Promise<void> {
     whatsappClient = null;
   }
 
-  if (baileysSocket?.logout) {
-    try {
-      await baileysSocket.logout();
-    } catch {}
-    baileysSocket = null;
-  }
-
   currentQR = null;
   pairingCode = null;
+  currentPairingPhoneNumber = "";
   connectionStatus = "disconnected";
   statusMessage = "Disconnected";
+
+  await prisma.channel.upsert({
+    where: { type: "whatsapp" },
+    update: { isActive: false, status: "disconnected" },
+    create: { type: "whatsapp", isActive: false, status: "disconnected" },
+  });
 }
 
 export async function sendWhatsAppMessage(
