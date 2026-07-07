@@ -1,159 +1,76 @@
 import { NextResponse } from "next/server";
-import {
-  fetchLatestBaileysVersion,
-  makeCacheableSignalKeyStore,
-  useMultiFileAuthState as createMultiFileAuthState,
-  default as makeWASocket,
-} from "@whiskeysockets/baileys";
-import pino from "pino";
-import { logger } from "@/lib/logger";
 import { extractPairingCode } from "@/lib/channels/pairing-code";
-import {
-  initializeMongoSession,
-  savePairingSession,
-} from "@/lib/channels/mongodb-session";
 
-/**
- * Dedicated endpoint for generating WhatsApp pairing codes
- * Mimics the knight-bot-paircode service pattern
- * Can be called from frontend or Vercel to get pairing codes
- */
+export const dynamic = "force-dynamic";
+
+function getServiceBaseUrl(): string | null {
+  const url =
+    process.env.WHATSAPP_SERVICE_URL ||
+    process.env.WHATSAPP_BACKEND_URL ||
+    process.env.WHATSAPP_PAIRING_SERVICE_URL;
+
+  return url ? url.replace(/\/+$/, "") : null;
+}
+
+function getServiceHeaders(): HeadersInit {
+  const headers: HeadersInit = {
+    Accept: "application/json",
+    "Content-Type": "application/json",
+  };
+
+  if (process.env.WHATSAPP_SERVICE_API_KEY) {
+    headers.Authorization = `Bearer ${process.env.WHATSAPP_SERVICE_API_KEY}`;
+    headers["x-api-key"] = process.env.WHATSAPP_SERVICE_API_KEY;
+  }
+
+  return headers;
+}
+
 export async function GET(request: Request) {
-  try {
-    // Initialize MongoDB session storage (non-blocking, handles failures gracefully)
-    try {
-      await initializeMongoSession();
-    } catch (mongoError) {
-      logger.warn("[Pairing Code] MongoDB initialization failed, continuing without session storage:", mongoError);
-    }
-
-    const { searchParams } = new URL(request.url);
-    const phoneNumber = searchParams.get("number");
-
-    if (!phoneNumber) {
-      return NextResponse.json(
-        { error: "Phone number is required", code: "MISSING_PHONE" },
-        { status: 400 }
-      );
-    }
-
-    // Normalize phone number
-    const normalizedPhone = phoneNumber.replace(/[^0-9]/g, "");
-    if (!normalizedPhone || normalizedPhone.length < 10) {
-      return NextResponse.json(
-        { error: "Invalid phone number format", code: "INVALID_PHONE" },
-        { status: 400 }
-      );
-    }
-
-    logger.info(`[Pairing Code] Requesting code for phone: ${normalizedPhone}`);
-
-    // Generate pairing code using Baileys
-    const pairingCode = await generatePairingCodeWithBaileys(normalizedPhone);
-
-    if (!pairingCode) {
-      return NextResponse.json(
-        { error: "Failed to generate pairing code", code: "GENERATION_FAILED" },
-        { status: 500 }
-      );
-    }
-
-    // Try to save to MongoDB, but don't fail if it's not available
-    try {
-      await savePairingSession(normalizedPhone, pairingCode, {
-        requestedAt: new Date().toISOString(),
-        expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(), // 5 minutes
-      });
-    } catch (mongoError) {
-      logger.warn("[Pairing Code] Failed to save session to MongoDB:", mongoError);
-    }
-
-    logger.info(`[Pairing Code] Generated and saved code for ${normalizedPhone}`);
-
+  const baseUrl = getServiceBaseUrl();
+  if (!baseUrl) {
     return NextResponse.json(
       {
-        code: pairingCode,
-        phone: normalizedPhone,
-        timestamp: new Date().toISOString(),
-        expiresIn: 300, // 5 minutes
+        error: "WHATSAPP_SERVICE_URL is not configured",
+        code: "SERVICE_NOT_CONFIGURED",
       },
-      { status: 200 }
+      { status: 503 }
     );
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    logger.error("[Pairing Code] Error:", error);
+  }
 
+  const { searchParams } = new URL(request.url);
+  const phoneNumber = searchParams.get("number")?.replace(/[^0-9]/g, "");
+
+  if (!phoneNumber || phoneNumber.length < 10) {
     return NextResponse.json(
-      { error: message, code: "INTERNAL_ERROR" },
-      { status: 500 }
+      { error: "Valid phone number is required", code: "INVALID_PHONE" },
+      { status: 400 }
     );
   }
-}
 
-/**
- * Generate pairing code using Baileys library
- * Creates a temporary socket to request the pairing code
- */
-async function generatePairingCodeWithBaileys(
-  phoneNumber: string
-): Promise<string | null> {
-  let sock: any = null;
+  const response = await fetch(`${baseUrl}/api/whatsapp/pair`, {
+    method: "POST",
+    headers: getServiceHeaders(),
+    body: JSON.stringify({
+      sessionId: searchParams.get("sessionId") || "default",
+      phoneNumber,
+    }),
+    cache: "no-store",
+  });
 
-  try {
-    const { state } = await createMultiFileAuthState("./baileys-session-temp");
-    const { version } = await fetchLatestBaileysVersion();
-
-    sock = makeWASocket({
-      version,
-      logger: pino({ level: "silent" }),
-      printQRInTerminal: false,
-      browser: ["Vercel", "Bot", "1.0.0"],
-      auth: {
-        creds: state.creds,
-        keys: makeCacheableSignalKeyStore(
-          state.keys,
-          pino({ level: "fatal" }).child({ level: "fatal" })
-        ),
-      },
-      generateHighQualityLinkPreview: false,
-      syncFullHistory: false,
-      defaultQueryTimeoutMs: 30000,
-      connectTimeoutMs: 30000,
-      keepAliveIntervalMs: 10000,
-    });
-
-    // Request pairing code with timeout
-    const codePromise = sock.requestPairingCode(phoneNumber);
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(
-        () => reject(new Error("Pairing code request timeout")),
-        25000
-      )
-    );
-
-    const code = await Promise.race([codePromise, timeoutPromise]);
-    const formatted = formatPairingCode(String(code));
-
-    logger.info(`[Baileys] Got code for ${phoneNumber}: ${formatted}`);
-
-    return formatted;
-  } catch (error) {
-    logger.error("[Baileys] Failed to generate code:", error);
-    return null;
-  } finally {
-    // Cleanup socket
-    if (sock) {
-      try {
-        await sock.logout();
-      } catch {}
-    }
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    return NextResponse.json(payload, { status: response.status });
   }
-}
 
-function formatPairingCode(code: string): string {
-  const normalized = String(code).replace(/[^a-zA-Z0-9]/g, "");
-  if (normalized.length <= 8) {
-    return normalized;
-  }
-  return normalized.match(/.{1,4}/g)?.join("-") || normalized;
+  const code = extractPairingCode(payload);
+  return NextResponse.json({
+    code,
+    pairingCode: code,
+    sessionId: payload.sessionId || "default",
+    phone: phoneNumber,
+    status: payload.status || "waiting",
+    timestamp: new Date().toISOString(),
+    expiresIn: 300,
+  });
 }

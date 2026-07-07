@@ -42,3 +42,9 @@ yarn-error.log*
 next-env.d.ts
 
 /src/generated/prisma
+
+# standalone WhatsApp service artifacts
+/whatsapp-service/node_modules/
+/whatsapp-service/dist/
+/whatsapp-service/sessions/
+/whatsapp-service/tmp-smoke-sessions/

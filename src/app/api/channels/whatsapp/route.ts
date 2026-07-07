@@ -4,9 +4,12 @@ import {
   initWhatsApp,
   disconnectWhatsApp,
 } from "@/lib/channels/whatsapp";
+import { prisma } from "@/lib/prisma";
+
+export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const status = getWhatsAppStatus();
+  const status = await getWhatsAppStatus();
   return NextResponse.json(status);
 }
 
@@ -23,8 +26,29 @@ export async function POST(request: Request) {
         );
       }
 
-      await initWhatsApp(mode === "pairing" ? "pairing" : "web", phoneNumber);
-      const status = getWhatsAppStatus();
+      const status = await initWhatsApp(mode === "pairing" ? "pairing" : "web", phoneNumber);
+      await prisma.channel.upsert({
+        where: { type: "whatsapp" },
+        update: {
+          isActive: status.status === "connected",
+          status: status.status,
+          config: {
+            mode: "pairing",
+            pairingPhoneNumber: status.phoneNumber,
+            sessionId: status.sessionId,
+          },
+        },
+        create: {
+          type: "whatsapp",
+          isActive: status.status === "connected",
+          status: status.status,
+          config: {
+            mode: "pairing",
+            pairingPhoneNumber: status.phoneNumber,
+            sessionId: status.sessionId,
+          },
+        },
+      });
       return NextResponse.json(status, {
         status: status.status === "error" ? 502 : 200,
       });
@@ -32,6 +56,11 @@ export async function POST(request: Request) {
 
     if (action === "disconnect") {
       await disconnectWhatsApp();
+      await prisma.channel.upsert({
+        where: { type: "whatsapp" },
+        update: { isActive: false, status: "disconnected" },
+        create: { type: "whatsapp", isActive: false, status: "disconnected" },
+      });
       return NextResponse.json({ status: "disconnected" });
     }
 
