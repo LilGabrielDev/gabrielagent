@@ -2,7 +2,7 @@ export default {
   apps: [
     {
       name: "owly-whatsapp-service",
-      script: "dist/server.js",
+      script: "index.js",
       instances: 1,
       exec_mode: "fork",
       autorestart: true,

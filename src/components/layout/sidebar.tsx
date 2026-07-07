@@ -94,8 +94,8 @@ export function Sidebar() {
     >
       <div className="flex items-center gap-3 px-4 py-4 border-b border-white/10">
         <Image
-          src="/owly.png"
-          alt="Owly"
+          src="/gabriel.png"
+          alt="Gabriel"
           width={32}
           height={32}
           className="rounded-lg flex-shrink-0"

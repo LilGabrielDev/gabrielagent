@@ -417,7 +417,7 @@ export default function SetupPage() {
         {step === 3 && (
           <>
             <p className="text-sm text-owly-text-light mb-6">
-              Your Owly instance is ready to go.
+              Your Gabriel instance is ready to go.
             </p>
             <div className="space-y-3 mb-6">
               <SummaryRow

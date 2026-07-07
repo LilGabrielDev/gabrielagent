@@ -83,7 +83,7 @@ Keep `SESSION_PATH` on persistent storage.
 Use a Node.js egg:
 
 - Install command: `npm ci && npm run build`
-- Startup command: `npm start`
+- Startup command: `npm start` or `node index.js`
 - Variables: set `PORT` to the allocated port, set `API_KEY`, `CORS_ORIGIN`, and `SESSION_PATH=./sessions`
 
 Do not delete the `sessions` directory between restarts.
