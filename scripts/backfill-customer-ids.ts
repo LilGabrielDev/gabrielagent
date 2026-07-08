@@ -1,3 +1,4 @@
+
 /**
  * Backfill Script: Link existing conversations to Customer records.
  *
@@ -12,7 +13,7 @@ import { PrismaNeon } from "@prisma/adapter-neon";
 
 const connectionString =
   process.env.DATABASE_URL ||
-  "postgresql://postgres:postgres@localhost:5432/owly?schema=public";
+  "postgresql://postgres:postgres@localhost:5432/gabriel?schema=public";
 const adapter = new PrismaNeon({ connectionString });
 const prisma = new PrismaClient({ adapter });
 

@@ -4,12 +4,12 @@ description: AI-powered customer support agent with multi-channel support
 type: application
 version: 0.1.0
 appVersion: "0.2.0"
-home: https://github.com/Hesper-Labs/owly
+home: https://github.com/LilGabrielDev/gabrielagent
 sources:
-  - https://github.com/Hesper-Labs/owly
+  -https://github.com/LilGabrielDev/gabrielagent
 maintainers:
-  - name: Hesper Labs
-    url: https://github.com/Hesper-Labs
+  - name: Lil GabrilDev
+    url:https://github.com/LilGabrielDev
 keywords:
   - ai
   - customer-support

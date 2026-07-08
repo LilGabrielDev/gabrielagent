@@ -1,6 +1,10 @@
+
+import Link from "next/link";
 import { Header } from "@/components/layout/header";
 import { StatCard } from "@/components/ui/stat-card";
 import { OnboardingChecklist } from "@/components/ui/onboarding-checklist";
+import { QuickActions } from "@/components/dashboard/quick-actions";
+import { SystemStatus } from "@/components/dashboard/system-status";
 import { prisma } from "@/lib/prisma";
 import {
   MessageSquare,
@@ -23,6 +27,7 @@ async function getStats() {
     openTickets,
     totalMessages,
     recentConversations,
+    channelRecords,
   ] = await Promise.all([
     prisma.conversation.count(),
     prisma.conversation.count({ where: { status: "active" } }),
@@ -36,6 +41,9 @@ async function getStats() {
         messages: { take: 1, orderBy: { createdAt: "desc" } },
         _count: { select: { messages: true } },
       },
+    }),
+    prisma.channel.findMany({
+      where: { type: { in: ["whatsapp", "email", "phone"] } },
     }),
   ]);
 
@@ -56,6 +64,7 @@ async function getStats() {
     totalMessages,
     resolutionRate,
     recentConversations,
+    channelRecords,
   };
 }
 
@@ -76,6 +85,7 @@ export default async function DashboardPage() {
       />
       <div className="flex-1 overflow-auto p-6 space-y-6">
         <OnboardingChecklist />
+        <QuickActions />
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
@@ -104,15 +114,21 @@ export default async function DashboardPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 bg-owly-surface rounded-xl border border-owly-border">
-            <div className="px-5 py-4 border-b border-owly-border">
-              <h3 className="font-semibold text-owly-text">
+          <div className="lg:col-span-2 bg-gabriel-surface rounded-xl border border-gabriel-border">
+            <div className="px-5 py-4 border-b border-gabriel-border flex items-center justify-between">
+              <h3 className="font-semibold text-gabriel-text">
                 Recent Conversations
               </h3>
+              <Link
+                href="/conversations"
+                className="text-xs font-medium text-gabriel-primary hover:underline"
+              >
+                View all
+              </Link>
             </div>
-            <div className="divide-y divide-owly-border">
+            <div className="divide-y divide-gabriel-border">
               {stats.recentConversations.length === 0 ? (
-                <div className="px-5 py-12 text-center text-owly-text-light">
+                <div className="px-5 py-12 text-center text-gabriel-text-light">
                   <MessageSquare className="h-10 w-10 mx-auto mb-3 opacity-40" />
                   <p className="font-medium">No conversations yet</p>
                   <p className="text-sm mt-1">
@@ -126,29 +142,30 @@ export default async function DashboardPage() {
                     channelIcons[conv.channel] || MessageSquare;
                   const lastMessage = conv.messages[0];
                   return (
-                    <div
+                    <Link
                       key={conv.id}
-                      className="px-5 py-3.5 hover:bg-owly-primary-50/50 transition-colors cursor-pointer"
+                      href={`/conversations?id=${conv.id}`}
+                      className="block px-5 py-3.5 hover:bg-gabriel-primary-50/50 transition-colors"
                     >
                       <div className="flex items-start gap-3">
-                        <div className="p-2 rounded-lg bg-owly-primary-50 text-owly-primary mt-0.5">
+                        <div className="p-2 rounded-lg bg-gabriel-primary-50 text-gabriel-primary mt-0.5">
                           <ChannelIcon className="h-4 w-4" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between">
-                            <p className="font-medium text-sm text-owly-text truncate">
+                            <p className="font-medium text-sm text-gabriel-text truncate">
                               {conv.customerName}
                             </p>
-                            <span className="text-xs text-owly-text-light flex-shrink-0 ml-2">
+                            <span className="text-xs text-gabriel-text-light flex-shrink-0 ml-2">
                               {formatRelativeTime(conv.updatedAt)}
                             </span>
                           </div>
-                          <p className="text-xs text-owly-text-light mt-0.5">
+                          <p className="text-xs text-gabriel-text-light mt-0.5">
                             {getChannelLabel(conv.channel)} -{" "}
                             {conv._count.messages} messages
                           </p>
                           {lastMessage && (
-                            <p className="text-sm text-owly-text-light mt-1 truncate">
+                            <p className="text-sm text-gabriel-text-light mt-1 truncate">
                               {lastMessage.content}
                             </p>
                           )}
@@ -159,7 +176,7 @@ export default async function DashboardPage() {
                           {conv.status}
                         </span>
                       </div>
-                    </div>
+                    </Link>
                   );
                 })
               )}
@@ -167,22 +184,37 @@ export default async function DashboardPage() {
           </div>
 
           <div className="space-y-6">
-            <div className="bg-owly-surface rounded-xl border border-owly-border">
-              <div className="px-5 py-4 border-b border-owly-border">
-                <h3 className="font-semibold text-owly-text">
+            <SystemStatus />
+
+            <div className="bg-gabriel-surface rounded-xl border border-gabriel-border">
+              <div className="px-5 py-4 border-b border-gabriel-border flex items-center justify-between">
+                <h3 className="font-semibold text-gabriel-text">
                   Channel Overview
                 </h3>
+                <Link
+                  href="/channels"
+                  className="text-xs font-medium text-gabriel-primary hover:underline"
+                >
+                  Manage
+                </Link>
               </div>
               <div className="p-5 space-y-4">
                 {[
                   {
+                    type: "whatsapp",
                     name: "WhatsApp",
                     icon: MessageCircle,
                     color: "text-green-600",
                   },
-                  { name: "Email", icon: Mail, color: "text-blue-600" },
-                  { name: "Phone", icon: Phone, color: "text-purple-600" },
-                ].map((channel) => (
+                  { type: "email", name: "Email", icon: Mail, color: "text-blue-600" },
+                  { type: "phone", name: "Phone", icon: Phone, color: "text-purple-600" },
+                ].map((channel) => {
+                  const record = stats.channelRecords.find(
+                    (c) => c.type === channel.type
+                  );
+                  const connected =
+                    record?.status === "connected" || record?.isActive === true;
+                  return (
                   <div
                     key={channel.name}
                     className="flex items-center justify-between"
@@ -195,29 +227,36 @@ export default async function DashboardPage() {
                         {channel.name}
                       </span>
                     </div>
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-red-50 text-red-600 font-medium">
-                      Disconnected
+                    <span
+                      className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                        connected
+                          ? "bg-green-50 text-green-600"
+                          : "bg-red-50 text-red-600"
+                      }`}
+                    >
+                      {connected ? "Connected" : record?.status || "Disconnected"}
                     </span>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
-            <div className="bg-owly-surface rounded-xl border border-owly-border">
-              <div className="px-5 py-4 border-b border-owly-border">
-                <h3 className="font-semibold text-owly-text">Quick Stats</h3>
+            <div className="bg-gabriel-surface rounded-xl border border-gabriel-border">
+              <div className="px-5 py-4 border-b border-gabriel-border">
+                <h3 className="font-semibold text-gabriel-text">Quick Stats</h3>
               </div>
               <div className="p-5 space-y-3">
                 <div className="flex justify-between text-sm">
-                  <span className="text-owly-text-light">Total Messages</span>
+                  <span className="text-gabriel-text-light">Total Messages</span>
                   <span className="font-medium">{stats.totalMessages}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-owly-text-light">Total Tickets</span>
+                  <span className="text-gabriel-text-light">Total Tickets</span>
                   <span className="font-medium">{stats.totalTickets}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-owly-text-light">
+                  <span className="text-gabriel-text-light">
                     Avg. Resolution Rate
                   </span>
                   <span className="font-medium">{stats.resolutionRate}%</span>

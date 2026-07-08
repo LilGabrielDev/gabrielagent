@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   title: "Gabriel - AI Customer Support",
   description: "Open-source AI-powered customer support agent",
   icons: {
-    icon: "/owly.png",
+    icon: "/gabriel.png",
   },
 };
 

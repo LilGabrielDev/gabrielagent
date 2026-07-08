@@ -22,8 +22,12 @@ import {
   Shield,
   FileCode,
   Webhook,
+  FlaskConical,
+  HelpCircle,
   ChevronLeft,
   ChevronRight,
+  Megaphone,
+  GitBranch,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -45,8 +49,11 @@ const sections: NavSection[] = [
     title: "Knowledge",
     items: [
       { name: "Knowledge Base", href: "/knowledge", icon: BookOpen },
+      { name: "Test Knowledge", href: "/knowledge/test", icon: FlaskConical },
       { name: "Canned Responses", href: "/canned-responses", icon: Zap },
       { name: "Automation", href: "/automation", icon: Workflow },
+      { name: "Flow Builder", href: "/flows", icon: GitBranch },
+      { name: "Campaigns", href: "/campaigns", icon: Megaphone },
       { name: "Business Hours", href: "/business-hours", icon: Clock },
     ],
   },
@@ -77,6 +84,7 @@ const sections: NavSection[] = [
       { name: "Administration", href: "/admin", icon: Shield },
       { name: "API Docs", href: "/api-docs", icon: FileCode },
       { name: "Settings", href: "/settings", icon: Settings },
+      { name: "Help", href: "/help", icon: HelpCircle },
     ],
   },
 ];
@@ -88,7 +96,7 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        "flex flex-col bg-owly-sidebar text-white transition-all duration-300",
+        "flex flex-col bg-gabriel-sidebar text-white transition-all duration-300",
         collapsed ? "w-16" : "w-60"
       )}
     >
@@ -132,8 +140,8 @@ export function Sidebar() {
                     className={cn(
                       "flex items-center gap-2.5 px-3 py-1.5 rounded-md text-[13px] font-medium transition-colors",
                       isActive
-                        ? "bg-owly-sidebar-active text-white"
-                        : "text-white/65 hover:bg-owly-sidebar-hover hover:text-white"
+                        ? "bg-gabriel-sidebar-active text-white"
+                        : "text-white/65 hover:bg-gabriel-sidebar-hover hover:text-white"
                     )}
                     title={collapsed ? item.name : undefined}
                   >
@@ -150,7 +158,7 @@ export function Sidebar() {
       <div className="px-2 py-2 border-t border-white/10">
         <button
           onClick={() => setCollapsed(!collapsed)}
-          className="flex items-center justify-center w-full py-1.5 rounded-md text-white/40 hover:text-white hover:bg-owly-sidebar-hover transition-colors"
+          className="flex items-center justify-center w-full py-1.5 rounded-md text-white/40 hover:text-white hover:bg-gabriel-sidebar-hover transition-colors"
         >
           {collapsed ? (
             <ChevronRight className="h-4 w-4" />

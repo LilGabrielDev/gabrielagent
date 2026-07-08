@@ -17,5 +17,5 @@ COPY --from=build /app/dist ./dist
 COPY index.js ./index.js
 RUN mkdir -p /app/sessions
 VOLUME ["/app/sessions"]
-EXPOSE 4000
+EXPOSE 3000
 CMD ["node", "index.js"]

@@ -1,3 +1,4 @@
+import QRCode from "qrcode";
 import { logger } from "@/lib/logger";
 
 type WhatsAppStatus =
@@ -8,11 +9,14 @@ type WhatsAppStatus =
   | "connected"
   | "error";
 
+type WhatsAppMode = "web" | "pairing" | "api";
+
 interface RemotePairResponse {
   success?: boolean;
   sessionId?: string;
   pairingCode?: string;
   code?: string;
+  qr?: string | null;
   status?: string;
   error?: string;
 }
@@ -23,6 +27,7 @@ interface RemoteStatusResponse {
   sessionId?: string;
   phoneNumber?: string | null;
   pairingCode?: string | null;
+  qr?: string | null;
   error?: string;
 }
 
@@ -30,7 +35,7 @@ export interface WhatsAppChannelStatus {
   status: WhatsAppStatus;
   qr: string | null;
   pairingCode: string | null;
-  mode: "pairing";
+  mode: WhatsAppMode;
   message: string;
   phoneNumber: string | null;
   sessionId: string;
@@ -81,7 +86,24 @@ function formatPairingCode(code: string): string {
   return normalized.match(/.{1,4}/g)?.join("-") || normalized;
 }
 
-function mapRemoteStatus(status?: string, connected?: boolean): WhatsAppStatus {
+async function toQrDataUrl(qr: string | null | undefined): Promise<string | null> {
+  if (!qr) return null;
+  if (qr.startsWith("data:image/")) return qr;
+  try {
+    return await QRCode.toDataURL(qr, { width: 256, margin: 1 });
+  } catch (error) {
+    logger.warn("[WhatsApp] Failed to render QR code", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return null;
+  }
+}
+
+function mapRemoteStatus(
+  status?: string,
+  connected?: boolean,
+  qr?: string | null
+): WhatsAppStatus {
   if (connected) return "connected";
 
   switch (status) {
@@ -90,14 +112,14 @@ function mapRemoteStatus(status?: string, connected?: boolean): WhatsAppStatus {
     case "waiting":
     case "pairing":
     case "pairing_ready":
-      return "pairing_ready";
+      return qr ? "qr_ready" : "pairing_ready";
     case "connecting":
     case "reconnecting":
-      return "connecting";
+      return qr ? "qr_ready" : "connecting";
     case "error":
       return "error";
     default:
-      return "disconnected";
+      return qr ? "qr_ready" : "disconnected";
   }
 }
 
@@ -105,7 +127,7 @@ function assertServiceConfigured(): string {
   const baseUrl = getServiceBaseUrl();
   if (!baseUrl) {
     throw new Error(
-      "WHATSAPP_SERVICE_URL is not configured. Deploy whatsapp-service and set the URL in Vercel."
+      "WHATSAPP_SERVICE_URL is not configured. Deploy whatsapp-service on Render, Railway, or Katabump and set the URL."
     );
   }
   return baseUrl;
@@ -152,10 +174,27 @@ function updateLastStatus(next: Partial<WhatsAppChannelStatus>) {
   lastStatus = {
     ...lastStatus,
     ...next,
-    mode: "pairing",
-    qr: null,
   };
   return lastStatus;
+}
+
+function statusMessage(
+  status: WhatsAppStatus,
+  mode: WhatsAppMode,
+  remoteStatus?: string
+): string {
+  if (status === "connected") return "Connected to WhatsApp";
+  if (status === "qr_ready") {
+    return "Scan the QR code with WhatsApp Linked Devices";
+  }
+  if (status === "pairing_ready") {
+    return "Enter the pairing code in WhatsApp Linked Devices";
+  }
+  if (status === "connecting") return "Connecting to WhatsApp service...";
+  if (status === "error") return "WhatsApp service error";
+  if (remoteStatus) return `WhatsApp service status: ${remoteStatus}`;
+  if (mode === "api") return "Business API credentials saved";
+  return "WhatsApp service is not connected";
 }
 
 export async function getWhatsAppStatus(
@@ -169,19 +208,16 @@ export async function getWhatsAppStatus(
       { method: "GET" },
       10000
     );
-    const status = mapRemoteStatus(remote.status, remote.connected);
+    const status = mapRemoteStatus(remote.status, remote.connected, remote.qr);
+    const qrDataUrl = await toQrDataUrl(remote.qr);
 
     return updateLastStatus({
       status,
+      qr: qrDataUrl,
       pairingCode: remote.pairingCode ? formatPairingCode(remote.pairingCode) : null,
       phoneNumber: remote.phoneNumber || lastStatus.phoneNumber,
       sessionId: remote.sessionId || sessionId,
-      message:
-        status === "connected"
-          ? "Connected to WhatsApp"
-          : status === "pairing_ready"
-            ? "Enter the pairing code in WhatsApp Linked Devices"
-            : `WhatsApp service status: ${remote.status || status}`,
+      message: statusMessage(status, lastStatus.mode, remote.status),
     });
   } catch (error) {
     logger.warn("[WhatsApp] Failed to fetch remote status", {
@@ -195,12 +231,37 @@ export async function getWhatsAppStatus(
 }
 
 export async function initWhatsApp(
-  mode: "web" | "pairing" = "pairing",
+  mode: WhatsAppMode = "pairing",
   phoneNumber?: string,
   sessionId = DEFAULT_SESSION_ID
 ): Promise<WhatsAppChannelStatus> {
-  if (mode !== "pairing") {
-    throw new Error("WhatsApp Web QR mode must run on the dedicated WhatsApp service.");
+  if (mode === "api") {
+    return updateLastStatus({
+      status: "connected",
+      mode: "api",
+      phoneNumber: phoneNumber ? normalizePhoneNumber(phoneNumber) : null,
+      sessionId,
+      message: "Business API credentials saved",
+    });
+  }
+
+  if (mode === "web") {
+    const remote = await requestJson<RemotePairResponse>("/api/whatsapp/qr", {
+      method: "POST",
+      body: JSON.stringify({ sessionId }),
+    });
+
+    const status = mapRemoteStatus(remote.status || "waiting", false, remote.qr);
+    const qrDataUrl = await toQrDataUrl(remote.qr);
+
+    return updateLastStatus({
+      status,
+      qr: qrDataUrl,
+      pairingCode: null,
+      mode: "web",
+      sessionId: remote.sessionId || sessionId,
+      message: statusMessage(status, "web", remote.status),
+    });
   }
 
   const normalizedPhoneNumber = phoneNumber ? normalizePhoneNumber(phoneNumber) : "";
@@ -222,9 +283,11 @@ export async function initWhatsApp(
   }
 
   return updateLastStatus({
-    status: mapRemoteStatus(remote.status || "waiting", false),
+    status: mapRemoteStatus(remote.status || "waiting", false, remote.qr),
     pairingCode: formatPairingCode(pairingCode),
+    qr: await toQrDataUrl(remote.qr),
     phoneNumber: normalizedPhoneNumber,
+    mode: "pairing",
     sessionId: remote.sessionId || sessionId,
     message: "Enter the pairing code in WhatsApp Linked Devices",
   });
@@ -247,6 +310,7 @@ export async function disconnectWhatsApp(
 
   return updateLastStatus({
     status: "disconnected",
+    qr: null,
     pairingCode: null,
     phoneNumber: null,
     sessionId,
@@ -266,4 +330,8 @@ export async function reconnectWhatsApp(
 export async function sendWhatsAppMessage(): Promise<boolean> {
   logger.warn("[WhatsApp] Sending messages is not exposed by the dedicated pairing service yet");
   return false;
+}
+
+export function isWhatsAppServiceConfigured(): boolean {
+  return Boolean(getServiceBaseUrl());
 }

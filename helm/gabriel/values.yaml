@@ -1,9 +1,9 @@
-# Owly Helm Chart - Default Values
+# Gabriel Helm Chart - Default Values
 
 replicaCount: 1
 
 image:
-  repository: ghcr.io/hesper-labs/owly
+  repository: ghcr.io/lilgabrieldev/gabrielagent
   pullPolicy: IfNotPresent
   tag: ""  # Defaults to Chart.AppVersion
 
@@ -45,14 +45,14 @@ ingress:
     # cert-manager.io/cluster-issuer: letsencrypt-prod
     # nginx.ingress.kubernetes.io/proxy-body-size: "10m"
   hosts:
-    - host: owly.example.com
+    - host: gabriel.example.com
       paths:
         - path: /
           pathType: Prefix
   tls: []
-    # - secretName: owly-tls
+    # - secretName: gabriel-tls
     #   hosts:
-    #     - owly.example.com
+    #     - gabriel.example.com
 
 # -- Resources
 resources:
@@ -93,7 +93,7 @@ database:
   url: ""
   host: "postgresql"
   port: 5432
-  name: "owly"
+  name: "gabriel"
   user: "postgres"
   password: "postgres"
   sslMode: "prefer"
@@ -103,6 +103,7 @@ config:
   nodeEnv: "production"
   appUrl: "http://localhost:3000"
   corsOrigin: ""
+  whatsappServiceUrl: ""
 
 # -- Secrets (sensitive)
 secrets:
@@ -116,6 +117,7 @@ secrets:
   twilioPhoneNumber: ""
   elevenLabsApiKey: ""
   webhookSecret: ""
+  whatsappServiceApiKey: ""
 
 # -- Database migration (init container)
 migration:

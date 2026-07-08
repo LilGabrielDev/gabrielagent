@@ -1,5 +1,7 @@
+
 "use client";
 
+import Link from "next/link";
 import { Header } from "@/components/layout/header";
 import { cn } from "@/lib/utils";
 import {
@@ -18,6 +20,7 @@ import {
   ToggleLeft,
   ToggleRight,
   Loader2,
+  FlaskConical,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
@@ -300,16 +303,25 @@ export default function KnowledgeBasePage() {
       <Header
         title="Knowledge Base"
         description="Manage your AI's knowledge and responses"
+        actions={
+          <Link
+            href="/knowledge/test"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gabriel-primary bg-gabriel-primary-50 border border-gabriel-primary/20 rounded-lg hover:bg-gabriel-primary/10 transition-colors"
+          >
+            <FlaskConical className="h-4 w-4" />
+            Test Knowledge
+          </Link>
+        }
       />
 
       <div className="flex-1 overflow-hidden flex">
         {/* ================= LEFT PANEL: Categories ================= */}
-        <div className="w-80 flex-shrink-0 border-r border-owly-border bg-owly-surface flex flex-col">
-          <div className="px-4 py-3 border-b border-owly-border flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-owly-text">Categories</h3>
+        <div className="w-80 flex-shrink-0 border-r border-gabriel-border bg-gabriel-surface flex flex-col">
+          <div className="px-4 py-3 border-b border-gabriel-border flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-gabriel-text">Categories</h3>
             <button
               onClick={() => openCategoryModal()}
-              className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-white bg-owly-primary hover:bg-owly-primary-dark rounded-lg transition-colors"
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-white bg-gabriel-primary hover:bg-gabriel-primary-dark rounded-lg transition-colors"
             >
               <Plus className="h-3.5 w-3.5" />
               Add
@@ -319,18 +331,18 @@ export default function KnowledgeBasePage() {
           <div className="flex-1 overflow-y-auto">
             {loadingCategories ? (
               <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-5 w-5 animate-spin text-owly-text-light" />
+                <Loader2 className="h-5 w-5 animate-spin text-gabriel-text-light" />
               </div>
             ) : categories.length === 0 ? (
               <div className="px-4 py-12 text-center">
-                <FolderOpen className="h-10 w-10 mx-auto mb-3 text-owly-text-light opacity-40" />
-                <p className="text-sm font-medium text-owly-text-light">No categories yet</p>
-                <p className="text-xs text-owly-text-light mt-1">
+                <FolderOpen className="h-10 w-10 mx-auto mb-3 text-gabriel-text-light opacity-40" />
+                <p className="text-sm font-medium text-gabriel-text-light">No categories yet</p>
+                <p className="text-xs text-gabriel-text-light mt-1">
                   Create your first category to start organizing knowledge entries.
                 </p>
                 <button
                   onClick={() => openCategoryModal()}
-                  className="mt-4 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-owly-primary border border-owly-primary/30 hover:bg-owly-primary-50 rounded-lg transition-colors"
+                  className="mt-4 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gabriel-primary border border-gabriel-primary/30 hover:bg-gabriel-primary-50 rounded-lg transition-colors"
                 >
                   <Plus className="h-3.5 w-3.5" />
                   Create Category
@@ -344,23 +356,23 @@ export default function KnowledgeBasePage() {
                     className={cn(
                       "group flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors",
                       selectedCategoryId === cat.id
-                        ? "bg-owly-primary-50 border-r-2 border-owly-primary"
-                        : "hover:bg-owly-bg"
+                        ? "bg-gabriel-primary-50 border-r-2 border-gabriel-primary"
+                        : "hover:bg-gabriel-bg"
                     )}
                     onClick={() => setSelectedCategoryId(cat.id)}
                   >
                     <CategoryIcon color={cat.color} name={cat.name} />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
-                        <p className="text-sm font-medium text-owly-text truncate">
+                        <p className="text-sm font-medium text-gabriel-text truncate">
                           {cat.name}
                         </p>
-                        <span className="text-xs text-owly-text-light flex-shrink-0 ml-2">
+                        <span className="text-xs text-gabriel-text-light flex-shrink-0 ml-2">
                           {cat._count.entries}
                         </span>
                       </div>
                       {cat.description && (
-                        <p className="text-xs text-owly-text-light truncate mt-0.5">
+                        <p className="text-xs text-gabriel-text-light truncate mt-0.5">
                           {cat.description}
                         </p>
                       )}
@@ -371,7 +383,7 @@ export default function KnowledgeBasePage() {
                           e.stopPropagation();
                           openCategoryModal(cat);
                         }}
-                        className="p-1 text-owly-text-light hover:text-owly-primary rounded transition-colors"
+                        className="p-1 text-gabriel-text-light hover:text-gabriel-primary rounded transition-colors"
                         title="Edit category"
                       >
                         <Pencil className="h-3.5 w-3.5" />
@@ -381,14 +393,14 @@ export default function KnowledgeBasePage() {
                           e.stopPropagation();
                           setDeleteTarget({ type: "category", id: cat.id, name: cat.name });
                         }}
-                        className="p-1 text-owly-text-light hover:text-red-600 rounded transition-colors"
+                        className="p-1 text-gabriel-text-light hover:text-red-600 rounded transition-colors"
                         title="Delete category"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     </div>
                     {selectedCategoryId === cat.id && (
-                      <ChevronRight className="h-4 w-4 text-owly-primary flex-shrink-0" />
+                      <ChevronRight className="h-4 w-4 text-gabriel-primary flex-shrink-0" />
                     )}
                   </div>
                 ))}
@@ -398,15 +410,15 @@ export default function KnowledgeBasePage() {
         </div>
 
         {/* ================= RIGHT PANEL: Entries ================= */}
-        <div className="flex-1 flex flex-col min-w-0 bg-owly-bg">
+        <div className="flex-1 flex flex-col min-w-0 bg-gabriel-bg">
           {!selectedCategory ? (
             <div className="flex-1 flex items-center justify-center">
               <div className="text-center">
-                <BookOpen className="h-12 w-12 mx-auto mb-4 text-owly-text-light opacity-30" />
-                <p className="text-lg font-medium text-owly-text-light">
+                <BookOpen className="h-12 w-12 mx-auto mb-4 text-gabriel-text-light opacity-30" />
+                <p className="text-lg font-medium text-gabriel-text-light">
                   Select a category
                 </p>
-                <p className="text-sm text-owly-text-light mt-1">
+                <p className="text-sm text-gabriel-text-light mt-1">
                   Choose a category from the left panel to view and manage its entries.
                 </p>
               </div>
@@ -414,15 +426,15 @@ export default function KnowledgeBasePage() {
           ) : (
             <>
               {/* Entries header */}
-              <div className="px-6 py-3 border-b border-owly-border bg-owly-surface flex items-center justify-between">
+              <div className="px-6 py-3 border-b border-gabriel-border bg-gabriel-surface flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <CategoryIcon color={selectedCategory.color} name={selectedCategory.name} />
                   <div>
-                    <h3 className="text-sm font-semibold text-owly-text">
+                    <h3 className="text-sm font-semibold text-gabriel-text">
                       {selectedCategory.name}
                     </h3>
                     {selectedCategory.description && (
-                      <p className="text-xs text-owly-text-light">
+                      <p className="text-xs text-gabriel-text-light">
                         {selectedCategory.description}
                       </p>
                     )}
@@ -430,7 +442,7 @@ export default function KnowledgeBasePage() {
                 </div>
                 <button
                   onClick={() => openEntryModal()}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-owly-primary hover:bg-owly-primary-dark rounded-lg transition-colors"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-gabriel-primary hover:bg-gabriel-primary-dark rounded-lg transition-colors"
                 >
                   <Plus className="h-3.5 w-3.5" />
                   Add Entry
@@ -441,20 +453,20 @@ export default function KnowledgeBasePage() {
               <div className="flex-1 overflow-y-auto p-6">
                 {loadingEntries ? (
                   <div className="flex items-center justify-center py-12">
-                    <Loader2 className="h-5 w-5 animate-spin text-owly-text-light" />
+                    <Loader2 className="h-5 w-5 animate-spin text-gabriel-text-light" />
                   </div>
                 ) : entries.length === 0 ? (
                   <div className="text-center py-12">
-                    <FileText className="h-10 w-10 mx-auto mb-3 text-owly-text-light opacity-40" />
-                    <p className="text-sm font-medium text-owly-text-light">
+                    <FileText className="h-10 w-10 mx-auto mb-3 text-gabriel-text-light opacity-40" />
+                    <p className="text-sm font-medium text-gabriel-text-light">
                       No entries in this category
                     </p>
-                    <p className="text-xs text-owly-text-light mt-1">
+                    <p className="text-xs text-gabriel-text-light mt-1">
                       Add knowledge entries that the AI can use when responding to customers.
                     </p>
                     <button
                       onClick={() => openEntryModal()}
-                      className="mt-4 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-owly-primary border border-owly-primary/30 hover:bg-owly-primary-50 rounded-lg transition-colors"
+                      className="mt-4 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gabriel-primary border border-gabriel-primary/30 hover:bg-gabriel-primary-50 rounded-lg transition-colors"
                     >
                       <Plus className="h-3.5 w-3.5" />
                       Add First Entry
@@ -473,14 +485,14 @@ export default function KnowledgeBasePage() {
                         <div
                           key={entry.id}
                           className={cn(
-                            "bg-owly-surface rounded-xl border border-owly-border p-4 transition-all hover:shadow-sm",
+                            "bg-gabriel-surface rounded-xl border border-gabriel-border p-4 transition-all hover:shadow-sm",
                             !entry.isActive && "opacity-60"
                           )}
                         >
                           <div className="flex items-start gap-3">
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
-                                <h4 className="text-sm font-medium text-owly-text">
+                                <h4 className="text-sm font-medium text-gabriel-text">
                                   {entry.title}
                                 </h4>
                                 <span
@@ -499,7 +511,7 @@ export default function KnowledgeBasePage() {
                                 )}
                               </div>
                               {contentPreview && (
-                                <p className="text-xs text-owly-text-light mt-1 truncate">
+                                <p className="text-xs text-gabriel-text-light mt-1 truncate">
                                   {contentPreview}
                                 </p>
                               )}
@@ -511,8 +523,8 @@ export default function KnowledgeBasePage() {
                                 className={cn(
                                   "p-1.5 rounded transition-colors",
                                   entry.isActive
-                                    ? "text-owly-primary hover:bg-owly-primary-50"
-                                    : "text-owly-text-light hover:bg-gray-100"
+                                    ? "text-gabriel-primary hover:bg-gabriel-primary-50"
+                                    : "text-gabriel-text-light hover:bg-gray-100"
                                 )}
                                 title={entry.isActive ? "Deactivate" : "Activate"}
                               >
@@ -524,7 +536,7 @@ export default function KnowledgeBasePage() {
                               </button>
                               <button
                                 onClick={() => openEntryModal(entry)}
-                                className="p-1.5 text-owly-text-light hover:text-owly-primary hover:bg-owly-primary-50 rounded transition-colors"
+                                className="p-1.5 text-gabriel-text-light hover:text-gabriel-primary hover:bg-gabriel-primary-50 rounded transition-colors"
                                 title="Edit entry"
                               >
                                 <Pencil className="h-3.5 w-3.5" />
@@ -533,7 +545,7 @@ export default function KnowledgeBasePage() {
                                 onClick={() =>
                                   setDeleteTarget({ type: "entry", id: entry.id, name: entry.title })
                                 }
-                                className="p-1.5 text-owly-text-light hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                                className="p-1.5 text-gabriel-text-light hover:text-red-600 hover:bg-red-50 rounded transition-colors"
                                 title="Delete entry"
                               >
                                 <Trash2 className="h-3.5 w-3.5" />
@@ -558,14 +570,14 @@ export default function KnowledgeBasePage() {
             className="absolute inset-0 bg-black/40"
             onClick={() => setShowCategoryModal(false)}
           />
-          <div className="relative bg-owly-surface rounded-xl shadow-xl border border-owly-border w-full max-w-md mx-4">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-owly-border">
-              <h3 className="font-semibold text-owly-text">
+          <div className="relative bg-gabriel-surface rounded-xl shadow-xl border border-gabriel-border w-full max-w-md mx-4">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gabriel-border">
+              <h3 className="font-semibold text-gabriel-text">
                 {editingCategory ? "Edit Category" : "New Category"}
               </h3>
               <button
                 onClick={() => setShowCategoryModal(false)}
-                className="p-1 text-owly-text-light hover:text-owly-text rounded transition-colors"
+                className="p-1 text-gabriel-text-light hover:text-gabriel-text rounded transition-colors"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -573,7 +585,7 @@ export default function KnowledgeBasePage() {
 
             <div className="p-5 space-y-4">
               <div>
-                <label className="block text-xs font-medium text-owly-text mb-1.5">
+                <label className="block text-xs font-medium text-gabriel-text mb-1.5">
                   Name
                 </label>
                 <input
@@ -581,12 +593,12 @@ export default function KnowledgeBasePage() {
                   value={categoryForm.name}
                   onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })}
                   placeholder="e.g. Product FAQ, Returns Policy"
-                  className="w-full px-3 py-2 text-sm border border-owly-border rounded-lg focus:outline-none focus:ring-2 focus:ring-owly-primary/30 focus:border-owly-primary"
+                  className="w-full px-3 py-2 text-sm border border-gabriel-border rounded-lg focus:outline-none focus:ring-2 focus:ring-gabriel-primary/30 focus:border-gabriel-primary"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-owly-text mb-1.5">
+                <label className="block text-xs font-medium text-gabriel-text mb-1.5">
                   Description
                 </label>
                 <input
@@ -596,12 +608,12 @@ export default function KnowledgeBasePage() {
                     setCategoryForm({ ...categoryForm, description: e.target.value })
                   }
                   placeholder="Brief description of this category"
-                  className="w-full px-3 py-2 text-sm border border-owly-border rounded-lg focus:outline-none focus:ring-2 focus:ring-owly-primary/30 focus:border-owly-primary"
+                  className="w-full px-3 py-2 text-sm border border-gabriel-border rounded-lg focus:outline-none focus:ring-2 focus:ring-gabriel-primary/30 focus:border-gabriel-primary"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-owly-text mb-1.5">
+                <label className="block text-xs font-medium text-gabriel-text mb-1.5">
                   Color
                 </label>
                 <div className="flex items-center gap-2 flex-wrap">
@@ -612,7 +624,7 @@ export default function KnowledgeBasePage() {
                       className={cn(
                         "w-7 h-7 rounded-full transition-all",
                         categoryForm.color === c
-                          ? "ring-2 ring-offset-2 ring-owly-primary scale-110"
+                          ? "ring-2 ring-offset-2 ring-gabriel-primary scale-110"
                           : "hover:scale-110"
                       )}
                       style={{ backgroundColor: c }}
@@ -624,24 +636,24 @@ export default function KnowledgeBasePage() {
                     onChange={(e) =>
                       setCategoryForm({ ...categoryForm, color: e.target.value })
                     }
-                    className="w-7 h-7 rounded cursor-pointer border border-owly-border"
+                    className="w-7 h-7 rounded cursor-pointer border border-gabriel-border"
                     title="Custom color"
                   />
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-owly-border">
+            <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-gabriel-border">
               <button
                 onClick={() => setShowCategoryModal(false)}
-                className="px-4 py-2 text-sm font-medium text-owly-text-light hover:text-owly-text rounded-lg transition-colors"
+                className="px-4 py-2 text-sm font-medium text-gabriel-text-light hover:text-gabriel-text rounded-lg transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={saveCategory}
                 disabled={!categoryForm.name.trim() || savingCategory}
-                className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-owly-primary hover:bg-owly-primary-dark disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors"
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-gabriel-primary hover:bg-gabriel-primary-dark disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors"
               >
                 {savingCategory && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                 {editingCategory ? "Save Changes" : "Create Category"}
@@ -658,14 +670,14 @@ export default function KnowledgeBasePage() {
             className="absolute inset-0 bg-black/40"
             onClick={() => setShowEntryModal(false)}
           />
-          <div className="relative bg-owly-surface rounded-xl shadow-xl border border-owly-border w-full max-w-lg mx-4">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-owly-border">
-              <h3 className="font-semibold text-owly-text">
+          <div className="relative bg-gabriel-surface rounded-xl shadow-xl border border-gabriel-border w-full max-w-lg mx-4">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gabriel-border">
+              <h3 className="font-semibold text-gabriel-text">
                 {editingEntry ? "Edit Entry" : "New Entry"}
               </h3>
               <button
                 onClick={() => setShowEntryModal(false)}
-                className="p-1 text-owly-text-light hover:text-owly-text rounded transition-colors"
+                className="p-1 text-gabriel-text-light hover:text-gabriel-text rounded transition-colors"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -673,7 +685,7 @@ export default function KnowledgeBasePage() {
 
             <div className="p-5 space-y-4">
               <div>
-                <label className="block text-xs font-medium text-owly-text mb-1.5">
+                <label className="block text-xs font-medium text-gabriel-text mb-1.5">
                   Title
                 </label>
                 <input
@@ -681,12 +693,12 @@ export default function KnowledgeBasePage() {
                   value={entryForm.title}
                   onChange={(e) => setEntryForm({ ...entryForm, title: e.target.value })}
                   placeholder="e.g. How to reset password"
-                  className="w-full px-3 py-2 text-sm border border-owly-border rounded-lg focus:outline-none focus:ring-2 focus:ring-owly-primary/30 focus:border-owly-primary"
+                  className="w-full px-3 py-2 text-sm border border-gabriel-border rounded-lg focus:outline-none focus:ring-2 focus:ring-gabriel-primary/30 focus:border-gabriel-primary"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-owly-text mb-1.5">
+                <label className="block text-xs font-medium text-gabriel-text mb-1.5">
                   Content
                 </label>
                 <textarea
@@ -694,12 +706,12 @@ export default function KnowledgeBasePage() {
                   onChange={(e) => setEntryForm({ ...entryForm, content: e.target.value })}
                   placeholder="Write the knowledge content that the AI will use when responding to customers..."
                   rows={8}
-                  className="w-full px-3 py-2 text-sm border border-owly-border rounded-lg focus:outline-none focus:ring-2 focus:ring-owly-primary/30 focus:border-owly-primary resize-y"
+                  className="w-full px-3 py-2 text-sm border border-gabriel-border rounded-lg focus:outline-none focus:ring-2 focus:ring-gabriel-primary/30 focus:border-gabriel-primary resize-y"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-owly-text mb-1.5">
+                <label className="block text-xs font-medium text-gabriel-text mb-1.5">
                   Priority
                 </label>
                 <div className="flex items-center gap-2">
@@ -713,7 +725,7 @@ export default function KnowledgeBasePage() {
                           "inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all",
                           entryForm.priority === p.value
                             ? cn(p.className, "border-current ring-1 ring-current/20")
-                            : "border-owly-border text-owly-text-light hover:border-owly-primary/30"
+                            : "border-gabriel-border text-gabriel-text-light hover:border-gabriel-primary/30"
                         )}
                       >
                         <Icon className="h-3 w-3" />
@@ -725,17 +737,17 @@ export default function KnowledgeBasePage() {
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-owly-border">
+            <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-gabriel-border">
               <button
                 onClick={() => setShowEntryModal(false)}
-                className="px-4 py-2 text-sm font-medium text-owly-text-light hover:text-owly-text rounded-lg transition-colors"
+                className="px-4 py-2 text-sm font-medium text-gabriel-text-light hover:text-gabriel-text rounded-lg transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={saveEntry}
                 disabled={!entryForm.title.trim() || savingEntry}
-                className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-owly-primary hover:bg-owly-primary-dark disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors"
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-gabriel-primary hover:bg-gabriel-primary-dark disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors"
               >
                 {savingEntry && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                 {editingEntry ? "Save Changes" : "Create Entry"}
@@ -752,28 +764,28 @@ export default function KnowledgeBasePage() {
             className="absolute inset-0 bg-black/40"
             onClick={() => setDeleteTarget(null)}
           />
-          <div className="relative bg-owly-surface rounded-xl shadow-xl border border-owly-border w-full max-w-sm mx-4">
+          <div className="relative bg-gabriel-surface rounded-xl shadow-xl border border-gabriel-border w-full max-w-sm mx-4">
             <div className="p-5">
               <div className="flex items-center gap-3 mb-3">
                 <div className="p-2 rounded-full bg-red-50">
                   <AlertCircle className="h-5 w-5 text-red-600" />
                 </div>
-                <h3 className="font-semibold text-owly-text">
+                <h3 className="font-semibold text-gabriel-text">
                   Delete {deleteTarget.type === "category" ? "Category" : "Entry"}
                 </h3>
               </div>
-              <p className="text-sm text-owly-text-light">
+              <p className="text-sm text-gabriel-text-light">
                 Are you sure you want to delete{" "}
-                <span className="font-medium text-owly-text">{deleteTarget.name}</span>?
+                <span className="font-medium text-gabriel-text">{deleteTarget.name}</span>?
                 {deleteTarget.type === "category" &&
                   " This will also delete all entries in this category."}
                 {" "}This action cannot be undone.
               </p>
             </div>
-            <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-owly-border">
+            <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-gabriel-border">
               <button
                 onClick={() => setDeleteTarget(null)}
-                className="px-4 py-2 text-sm font-medium text-owly-text-light hover:text-owly-text rounded-lg transition-colors"
+                className="px-4 py-2 text-sm font-medium text-gabriel-text-light hover:text-gabriel-text rounded-lg transition-colors"
               >
                 Cancel
               </button>

@@ -1,9 +1,9 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "owly.fullname" . }}
+  name: {{ include "gabriel.fullname" . }}
   labels:
-    {{- include "owly.labels" . | nindent 4 }}
+    {{- include "gabriel.labels" . | nindent 4 }}
 data:
   NODE_ENV: {{ .Values.config.nodeEnv | quote }}
   NEXT_PUBLIC_APP_URL: {{ .Values.config.appUrl | quote }}
@@ -11,4 +11,7 @@ data:
   PORT: "3000"
   {{- if .Values.config.corsOrigin }}
   CORS_ORIGIN: {{ .Values.config.corsOrigin | quote }}
+  {{- end }}
+  {{- if .Values.config.whatsappServiceUrl }}
+  WHATSAPP_SERVICE_URL: {{ .Values.config.whatsappServiceUrl | quote }}
   {{- end }}

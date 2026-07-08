@@ -1,14 +1,14 @@
 {{/*
 Expand the name of the chart.
 */}}
-{{- define "owly.name" -}}
+{{- define "gabriel.name" -}}
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Create a default fully qualified app name.
 */}}
-{{- define "owly.fullname" -}}
+{{- define "gabriel.fullname" -}}
 {{- if .Values.fullnameOverride }}
 {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
 {{- else }}
@@ -24,16 +24,16 @@ Create a default fully qualified app name.
 {{/*
 Create chart name and version as used by the chart label.
 */}}
-{{- define "owly.chart" -}}
+{{- define "gabriel.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Common labels
 */}}
-{{- define "owly.labels" -}}
-helm.sh/chart: {{ include "owly.chart" . }}
-{{ include "owly.selectorLabels" . }}
+{{- define "gabriel.labels" -}}
+helm.sh/chart: {{ include "gabriel.chart" . }}
+{{ include "gabriel.selectorLabels" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
@@ -43,17 +43,17 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{/*
 Selector labels
 */}}
-{{- define "owly.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "owly.name" . }}
+{{- define "gabriel.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "gabriel.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
 Service account name
 */}}
-{{- define "owly.serviceAccountName" -}}
+{{- define "gabriel.serviceAccountName" -}}
 {{- if .Values.serviceAccount.create }}
-{{- default (include "owly.fullname" .) .Values.serviceAccount.name }}
+{{- default (include "gabriel.fullname" .) .Values.serviceAccount.name }}
 {{- else }}
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
@@ -62,7 +62,7 @@ Service account name
 {{/*
 Database URL - construct from individual fields or use provided URL
 */}}
-{{- define "owly.databaseUrl" -}}
+{{- define "gabriel.databaseUrl" -}}
 {{- if .Values.database.url }}
 {{- .Values.database.url }}
 {{- else }}
@@ -73,10 +73,10 @@ Database URL - construct from individual fields or use provided URL
 {{/*
 Secret name - use existing or generate
 */}}
-{{- define "owly.secretName" -}}
+{{- define "gabriel.secretName" -}}
 {{- if .Values.secrets.existingSecret }}
 {{- .Values.secrets.existingSecret }}
 {{- else }}
-{{- include "owly.fullname" . }}
+{{- include "gabriel.fullname" . }}
 {{- end }}
 {{- end }}

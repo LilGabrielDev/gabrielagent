@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 import { requireAuth, isAuthenticated } from "@/lib/route-auth";
+import { getWhatsAppStatus, isWhatsAppServiceConfigured } from "@/lib/channels/whatsapp";
 
 const CHANNEL_TYPES = ["whatsapp", "email", "phone", "sms", "telegram"];
 
@@ -15,9 +16,28 @@ export async function GET(request: NextRequest) {
     });
 
     const channelMap = new Map(channels.map((ch) => [ch.type, ch]));
+
+    let whatsappRemoteStatus: Awaited<ReturnType<typeof getWhatsAppStatus>> | null = null;
+    if (isWhatsAppServiceConfigured()) {
+      try {
+        whatsappRemoteStatus = await getWhatsAppStatus();
+      } catch (error) {
+        logger.warn("Failed to sync WhatsApp remote status", { error });
+      }
+    }
+
     const result = CHANNEL_TYPES.map((type) => {
       const existing = channelMap.get(type);
-      if (existing) return existing;
+      if (existing) {
+        if (type === "whatsapp" && whatsappRemoteStatus) {
+          return {
+            ...existing,
+            status: whatsappRemoteStatus.status,
+            isActive: whatsappRemoteStatus.status === "connected",
+          };
+        }
+        return existing;
+      }
       return {
         id: null,
         type,

@@ -1,5 +1,3 @@
-import fs from "node:fs/promises";
-import path from "node:path";
 import makeWASocket, {
   DisconnectReason,
   fetchLatestBaileysVersion,
@@ -7,9 +5,9 @@ import makeWASocket, {
   useMultiFileAuthState,
   type WASocket,
 } from "@whiskeysockets/baileys";
-import { config } from "./config.js";
 import { HttpError } from "./http-error.js";
 import { logger } from "./logger.js";
+import { createSessionStore, validateSessionId } from "./session-store.js";
 
 type SessionStatus =
   | "idle"
@@ -21,6 +19,8 @@ type SessionStatus =
   | "logged_out"
   | "error";
 
+export type HealthConnectionStatus = "disconnected" | "qr_pending" | "paired" | "ready";
+
 interface SessionRecord {
   id: string;
   phoneNumber?: string;
@@ -28,6 +28,7 @@ interface SessionRecord {
   status: SessionStatus;
   connected: boolean;
   pairingCode?: string;
+  qr?: string;
   lastError?: string;
   reconnectTimer?: NodeJS.Timeout;
   reconnectAttempts: number;
@@ -39,26 +40,27 @@ export interface SessionStatusResponse {
   sessionId: string;
   connected: boolean;
   status: SessionStatus;
+  healthStatus: HealthConnectionStatus;
   phoneNumber: string | null;
   pairingCode: string | null;
+  qr: string | null;
   lastError: string | null;
   updatedAt: string;
 }
 
-const SESSION_ID_PATTERN = /^[a-zA-Z0-9_-]{1,80}$/;
-
 export class WhatsAppSessionManager {
   private sessions = new Map<string, SessionRecord>();
+  private store = createSessionStore();
   private versionPromise = fetchLatestBaileysVersion();
 
   async bootstrap() {
-    await fs.mkdir(config.sessionPath, { recursive: true });
-    const entries = await fs.readdir(config.sessionPath, { withFileTypes: true });
+    await this.store.initialize();
+    const sessionIds = await this.store.listSessionIds();
     await Promise.all(
-      entries
-        .filter((entry) => entry.isDirectory() && SESSION_ID_PATTERN.test(entry.name))
-        .map((entry) => this.reconnect(entry.name).catch((error) => {
-          logger.warn({ error, sessionId: entry.name }, "Failed to restore WhatsApp session");
+      sessionIds
+        .map((sessionId) => this.reconnect(sessionId).catch(async (error) => {
+          logger.warn({ error, sessionId }, "Failed to restore WhatsApp session");
+          await this.markCorrupt(sessionId, error);
         }))
     );
   }
@@ -93,13 +95,34 @@ export class WhatsAppSessionManager {
     return this.toPairResponse(session);
   }
 
+  async startQr(sessionId: string) {
+    const session = await this.connect(sessionId);
+
+    if (session.connected) {
+      return this.toPairResponse(session);
+    }
+
+    const qr = await this.waitForField(
+      session,
+      "qr",
+      45000,
+      "Timed out while waiting for WhatsApp QR code"
+    );
+
+    session.qr = qr;
+    session.status = "waiting";
+    session.updatedAt = new Date().toISOString();
+
+    return this.toPairResponse(session);
+  }
+
   async reconnect(sessionId: string) {
     const session = await this.connect(sessionId);
     return this.getStatus(session.id);
   }
 
   getStatus(sessionId: string): SessionStatusResponse {
-    this.validateSessionId(sessionId);
+    validateSessionId(sessionId);
     const session = this.sessions.get(sessionId);
 
     if (!session) {
@@ -107,8 +130,10 @@ export class WhatsAppSessionManager {
         sessionId,
         connected: false,
         status: "disconnected",
+        healthStatus: "disconnected",
         phoneNumber: null,
         pairingCode: null,
+        qr: null,
         lastError: null,
         updatedAt: new Date().toISOString(),
       };
@@ -118,8 +143,10 @@ export class WhatsAppSessionManager {
       sessionId: session.id,
       connected: session.connected,
       status: session.status,
+      healthStatus: this.toHealthStatus(session),
       phoneNumber: session.phoneNumber || null,
       pairingCode: session.pairingCode || null,
+      qr: session.qr || null,
       lastError: session.lastError || null,
       updatedAt: session.updatedAt,
     };
@@ -130,7 +157,7 @@ export class WhatsAppSessionManager {
   }
 
   async logout(sessionId: string) {
-    this.validateSessionId(sessionId);
+    validateSessionId(sessionId);
     const session = this.sessions.get(sessionId);
 
     if (session?.reconnectTimer) clearTimeout(session.reconnectTimer);
@@ -143,7 +170,7 @@ export class WhatsAppSessionManager {
 
     session?.socket?.end(undefined);
     this.sessions.delete(sessionId);
-    await this.removeSessionDirectory(sessionId);
+    await this.store.remove(sessionId);
 
     return {
       success: true,
@@ -153,7 +180,7 @@ export class WhatsAppSessionManager {
   }
 
   private async connect(sessionId: string, phoneNumber?: string): Promise<SessionRecord> {
-    this.validateSessionId(sessionId);
+    validateSessionId(sessionId);
 
     const existing = this.sessions.get(sessionId);
     if (existing?.socket && ["connecting", "waiting", "connected"].includes(existing.status)) {
@@ -179,10 +206,17 @@ export class WhatsAppSessionManager {
     session.updatedAt = now;
     this.sessions.set(sessionId, session);
 
-    const authDirectory = this.getSessionDirectory(sessionId);
-    await fs.mkdir(authDirectory, { recursive: true });
+    const authDirectory = this.store.getSessionPath(sessionId);
 
-    const { state, saveCreds } = await useMultiFileAuthState(authDirectory);
+    let authState: Awaited<ReturnType<typeof useMultiFileAuthState>>;
+    try {
+      authState = await useMultiFileAuthState(authDirectory);
+    } catch (error) {
+      await this.markCorrupt(sessionId, error);
+      authState = await useMultiFileAuthState(authDirectory);
+    }
+
+    const { state, saveCreds } = authState;
     const { version } = await this.versionPromise;
     const socketLogger = logger.child({ sessionId, module: "baileys" });
 
@@ -190,7 +224,7 @@ export class WhatsAppSessionManager {
       version,
       logger: socketLogger,
       printQRInTerminal: false,
-      browser: ["Owly", "Chrome", "1.0.0"],
+      browser: ["Gabriel", "Chrome", "1.0.0"],
       auth: {
         creds: state.creds,
         keys: makeCacheableSignalKeyStore(state.keys, socketLogger),
@@ -214,6 +248,7 @@ export class WhatsAppSessionManager {
         session.status = "connected";
         session.connected = true;
         session.pairingCode = undefined;
+        session.qr = undefined;
         session.lastError = undefined;
         session.reconnectAttempts = 0;
         logger.info({ sessionId }, "WhatsApp session connected");
@@ -223,6 +258,7 @@ export class WhatsAppSessionManager {
       if (update.connection === "connecting") {
         session.status = session.status === "waiting" ? "waiting" : "connecting";
         session.connected = false;
+        if (update.qr) session.qr = update.qr;
         return;
       }
 
@@ -233,7 +269,12 @@ export class WhatsAppSessionManager {
 
         if (statusCode === DisconnectReason.loggedOut) {
           session.status = "logged_out";
+          session.pairingCode = undefined;
+          session.qr = undefined;
           logger.warn({ sessionId }, "WhatsApp session logged out");
+          this.store.remove(sessionId).catch((error) => {
+            logger.warn({ error, sessionId }, "Failed to remove logged-out WhatsApp session");
+          });
           return;
         }
 
@@ -261,26 +302,6 @@ export class WhatsAppSessionManager {
     }, delay);
   }
 
-  private validateSessionId(sessionId: string) {
-    if (!SESSION_ID_PATTERN.test(sessionId)) {
-      throw new HttpError(400, "sessionId may only contain letters, numbers, dashes, and underscores");
-    }
-  }
-
-  private getSessionDirectory(sessionId: string) {
-    const directory = path.resolve(config.sessionPath, sessionId);
-    const root = path.resolve(config.sessionPath);
-    if (!directory.startsWith(root)) {
-      throw new HttpError(400, "Invalid sessionId");
-    }
-    return directory;
-  }
-
-  private async removeSessionDirectory(sessionId: string) {
-    const directory = this.getSessionDirectory(sessionId);
-    await fs.rm(directory, { recursive: true, force: true });
-  }
-
   private formatPairingCode(code: string) {
     const normalized = String(code).replace(/[^a-zA-Z0-9]/g, "");
     if (normalized.length <= 8) return normalized;
@@ -292,8 +313,25 @@ export class WhatsAppSessionManager {
       success: true,
       sessionId: session.id,
       pairingCode: session.pairingCode || null,
+      qr: session.qr || null,
       status: session.connected ? "connected" : "waiting",
+      healthStatus: this.toHealthStatus(session),
     };
+  }
+
+  private toHealthStatus(session: SessionRecord): HealthConnectionStatus {
+    if (session.connected || session.status === "connected") return "ready";
+    if (session.pairingCode) return "paired";
+    if (session.status === "connecting" || session.status === "waiting" || session.qr) {
+      return "qr_pending";
+    }
+    return "disconnected";
+  }
+
+  private async markCorrupt(sessionId: string, error: unknown) {
+    logger.warn({ error, sessionId }, "Quarantining corrupted WhatsApp session");
+    this.sessions.delete(sessionId);
+    await this.store.quarantine(sessionId);
   }
 
   private async withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string) {
@@ -308,5 +346,32 @@ export class WhatsAppSessionManager {
     } finally {
       if (timeout) clearTimeout(timeout);
     }
+  }
+
+  private waitForField(
+    session: SessionRecord,
+    field: "qr" | "pairingCode",
+    timeoutMs: number,
+    message: string
+  ): Promise<string> {
+    const existing = session[field];
+    if (existing) return Promise.resolve(existing);
+
+    return new Promise((resolve, reject) => {
+      const startedAt = Date.now();
+      const interval = setInterval(() => {
+        const value = session[field];
+        if (value) {
+          clearInterval(interval);
+          resolve(value);
+          return;
+        }
+
+        if (Date.now() - startedAt > timeoutMs) {
+          clearInterval(interval);
+          reject(new HttpError(504, message));
+        }
+      }, 250);
+    });
   }
 }

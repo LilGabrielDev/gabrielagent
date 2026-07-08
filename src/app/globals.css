@@ -3,70 +3,70 @@
 :root {
   --font-geist-sans: Arial, Helvetica, sans-serif;
   --font-geist-mono: "Courier New", Courier, monospace;
-  --owly-primary: #4A7C9B;
-  --owly-primary-dark: #2D5A7B;
-  --owly-primary-light: #A8D0E6;
-  --owly-primary-50: #EDF5FA;
-  --owly-primary-100: #D6E8F2;
-  --owly-accent: #C4956A;
-  --owly-accent-light: #E0C4A8;
-  --owly-bg: #F8FAFC;
-  --owly-surface: #FFFFFF;
-  --owly-text: #1E293B;
-  --owly-text-light: #64748B;
-  --owly-border: #E2E8F0;
-  --owly-sidebar: #1E293B;
-  --owly-sidebar-hover: #334155;
-  --owly-sidebar-active: #4A7C9B;
-  --owly-success: #22C55E;
-  --owly-warning: #F59E0B;
-  --owly-danger: #EF4444;
+  --gabriel-primary: #4A7C9B;
+  --gabriel-primary-dark: #2D5A7B;
+  --gabriel-primary-light: #A8D0E6;
+  --gabriel-primary-50: #EDF5FA;
+  --gabriel-primary-100: #D6E8F2;
+  --gabriel-accent: #C4956A;
+  --gabriel-accent-light: #E0C4A8;
+  --gabriel-bg: #F8FAFC;
+  --gabriel-surface: #FFFFFF;
+  --gabriel-text: #1E293B;
+  --gabriel-text-light: #64748B;
+  --gabriel-border: #E2E8F0;
+  --gabriel-sidebar: #1E293B;
+  --gabriel-sidebar-hover: #334155;
+  --gabriel-sidebar-active: #4A7C9B;
+  --gabriel-success: #22C55E;
+  --gabriel-warning: #F59E0B;
+  --gabriel-danger: #EF4444;
 }
 
 .dark {
-  --owly-primary: #5A9CBB;
-  --owly-primary-dark: #4A8CAB;
-  --owly-primary-light: #3A6C8B;
-  --owly-primary-50: #1A2A3A;
-  --owly-primary-100: #1E3448;
-  --owly-accent: #D4A57A;
-  --owly-accent-light: #4A3A2A;
-  --owly-bg: #0F172A;
-  --owly-surface: #1E293B;
-  --owly-text: #F1F5F9;
-  --owly-text-light: #94A3B8;
-  --owly-border: #334155;
-  --owly-sidebar: #0F172A;
-  --owly-sidebar-hover: #1E293B;
-  --owly-sidebar-active: #4A7C9B;
+  --gabriel-primary: #5A9CBB;
+  --gabriel-primary-dark: #4A8CAB;
+  --gabriel-primary-light: #3A6C8B;
+  --gabriel-primary-50: #1A2A3A;
+  --gabriel-primary-100: #1E3448;
+  --gabriel-accent: #D4A57A;
+  --gabriel-accent-light: #4A3A2A;
+  --gabriel-bg: #0F172A;
+  --gabriel-surface: #1E293B;
+  --gabriel-text: #F1F5F9;
+  --gabriel-text-light: #94A3B8;
+  --gabriel-border: #334155;
+  --gabriel-sidebar: #0F172A;
+  --gabriel-sidebar-hover: #1E293B;
+  --gabriel-sidebar-active: #4A7C9B;
 }
 
 @theme inline {
-  --color-owly-primary: var(--owly-primary);
-  --color-owly-primary-dark: var(--owly-primary-dark);
-  --color-owly-primary-light: var(--owly-primary-light);
-  --color-owly-primary-50: var(--owly-primary-50);
-  --color-owly-primary-100: var(--owly-primary-100);
-  --color-owly-accent: var(--owly-accent);
-  --color-owly-accent-light: var(--owly-accent-light);
-  --color-owly-bg: var(--owly-bg);
-  --color-owly-surface: var(--owly-surface);
-  --color-owly-text: var(--owly-text);
-  --color-owly-text-light: var(--owly-text-light);
-  --color-owly-border: var(--owly-border);
-  --color-owly-sidebar: var(--owly-sidebar);
-  --color-owly-sidebar-hover: var(--owly-sidebar-hover);
-  --color-owly-sidebar-active: var(--owly-sidebar-active);
-  --color-owly-success: var(--owly-success);
-  --color-owly-warning: var(--owly-warning);
-  --color-owly-danger: var(--owly-danger);
+  --color-gabriel-primary: var(--gabriel-primary);
+  --color-gabriel-primary-dark: var(--gabriel-primary-dark);
+  --color-gabriel-primary-light: var(--gabriel-primary-light);
+  --color-gabriel-primary-50: var(--gabriel-primary-50);
+  --color-gabriel-primary-100: var(--gabriel-primary-100);
+  --color-gabriel-accent: var(--gabriel-accent);
+  --color-gabriel-accent-light: var(--gabriel-accent-light);
+  --color-gabriel-bg: var(--gabriel-bg);
+  --color-gabriel-surface: var(--gabriel-surface);
+  --color-gabriel-text: var(--gabriel-text);
+  --color-gabriel-text-light: var(--gabriel-text-light);
+  --color-gabriel-border: var(--gabriel-border);
+  --color-gabriel-sidebar: var(--gabriel-sidebar);
+  --color-gabriel-sidebar-hover: var(--gabriel-sidebar-hover);
+  --color-gabriel-sidebar-active: var(--gabriel-sidebar-active);
+  --color-gabriel-success: var(--gabriel-success);
+  --color-gabriel-warning: var(--gabriel-warning);
+  --color-gabriel-danger: var(--gabriel-danger);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
 body {
-  background: var(--owly-bg);
-  color: var(--owly-text);
+  background: var(--gabriel-bg);
+  color: var(--gabriel-text);
   font-family: var(--font-sans), system-ui, sans-serif;
 }
 
@@ -81,12 +81,12 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--owly-border);
+  background: var(--gabriel-border);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--owly-text-light);
+  background: var(--gabriel-text-light);
 }
 
 /* Animations */
@@ -160,7 +160,7 @@ body {
 
 /* Focus ring */
 .focus-ring:focus-visible {
-  outline: 2px solid var(--owly-primary);
+  outline: 2px solid var(--gabriel-primary);
   outline-offset: 2px;
 }
 

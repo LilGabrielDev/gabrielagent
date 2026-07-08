@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 import { requireAuth, isAuthenticated } from "@/lib/route-auth";
+import { disconnectWhatsApp, getWhatsAppStatus } from "@/lib/channels/whatsapp";
 
 const CHANNEL_TYPES = ["whatsapp", "email", "phone", "sms", "telegram"];
 
@@ -116,6 +117,24 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const channel = await prisma.channel.findUnique({ where: { type } });
 
     if (action === "disconnect") {
+      if (type === "whatsapp") {
+        const status = await disconnectWhatsApp();
+        const updated = await prisma.channel.upsert({
+          where: { type },
+          update: { status: "disconnected", isActive: false },
+          create: {
+            type,
+            isActive: false,
+            config: {},
+            status: "disconnected",
+          },
+        });
+        return NextResponse.json({
+          ...updated,
+          message: status.message || "WhatsApp disconnected",
+        });
+      }
+
       const updated = await prisma.channel.upsert({
         where: { type },
         update: { status: "disconnected" },
@@ -133,6 +152,30 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
 
     if (action === "connect") {
+      if (type === "whatsapp") {
+        const remoteStatus = await getWhatsAppStatus();
+        const updated = await prisma.channel.upsert({
+          where: { type },
+          update: {
+            status: remoteStatus.status,
+            isActive: remoteStatus.status === "connected",
+          },
+          create: {
+            type,
+            isActive: remoteStatus.status === "connected",
+            config: {},
+            status: remoteStatus.status,
+          },
+        });
+        return NextResponse.json({
+          ...updated,
+          message:
+            remoteStatus.status === "connected"
+              ? "WhatsApp channel connected"
+              : "WhatsApp connection updated",
+        });
+      }
+
       if (!channel?.config || Object.keys(channel.config as object).length === 0) {
         return NextResponse.json(
           { error: "Channel must be configured before connecting" },

@@ -3,16 +3,16 @@ import { NextResponse } from "next/server";
 const spec = {
   openapi: "3.0.3",
   info: {
-    title: "Owly API",
+    title: "Gabriel API",
     description: "AI-powered customer support agent API. Multi-channel support for WhatsApp, Email, and Phone with autonomous AI actions.",
     version: "2026-04-07",
     contact: {
-      name: "Hesper Labs",
-      url: "https://github.com/Hesper-Labs/owly",
+      name: "Gabriel",
+      url: "https://github.com/LilGabrielDev/gabrielagent",
     },
     license: {
       name: "MIT",
-      url: "https://github.com/Hesper-Labs/owly/blob/main/LICENSE",
+      url: "https://github.com/LilGabrielDev/gabrielagent/blob/main/LICENSE",
     },
   },
   servers: [
@@ -132,7 +132,7 @@ const spec = {
   },
   components: {
     securitySchemes: {
-      cookieAuth: { type: "apiKey", in: "cookie", name: "owly-token" },
+      cookieAuth: { type: "apiKey", in: "cookie", name: "gabriel-token" },
     },
     schemas: {
       PaginatedResponse: {

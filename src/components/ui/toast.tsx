@@ -44,20 +44,20 @@ const iconMap: Record<ToastType, React.ElementType> = {
 
 const styleMap: Record<ToastType, string> = {
   success:
-    "border-owly-success/30 bg-green-50 text-green-900",
+    "border-gabriel-success/30 bg-green-50 text-green-900",
   error:
-    "border-owly-danger/30 bg-red-50 text-red-900",
+    "border-gabriel-danger/30 bg-red-50 text-red-900",
   warning:
-    "border-owly-warning/30 bg-amber-50 text-amber-900",
+    "border-gabriel-warning/30 bg-amber-50 text-amber-900",
   info:
-    "border-owly-primary/30 bg-owly-primary-50 text-owly-primary-dark",
+    "border-gabriel-primary/30 bg-gabriel-primary-50 text-gabriel-primary-dark",
 };
 
 const iconColorMap: Record<ToastType, string> = {
-  success: "text-owly-success",
-  error: "text-owly-danger",
-  warning: "text-owly-warning",
-  info: "text-owly-primary",
+  success: "text-gabriel-success",
+  error: "text-gabriel-danger",
+  warning: "text-gabriel-warning",
+  info: "text-gabriel-primary",
 };
 
 let toastCounter = 0;

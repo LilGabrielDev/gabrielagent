@@ -1,7 +1,7 @@
 export default {
   apps: [
     {
-      name: "owly-whatsapp-service",
+      name: "gabriel-whatsapp-service",
       script: "index.js",
       instances: 1,
       exec_mode: "fork",
@@ -9,7 +9,7 @@ export default {
       max_memory_restart: "512M",
       env: {
         NODE_ENV: "production",
-        PORT: process.env.PORT || 4000,
+        PORT: process.env.PORT || 3000,
         SESSION_PATH: process.env.SESSION_PATH || "./sessions",
       },
     },

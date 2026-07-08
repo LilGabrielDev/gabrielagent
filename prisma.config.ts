@@ -9,7 +9,7 @@ const datasourceUrl =
   process.env["POSTGRES_PRISMA_URL"] ||
   process.env["POSTGRES_URL"] ||
   process.env["DATABASE_URL"] ||
-  "postgresql://postgres:postgres@localhost:5432/owly?schema=public";
+  "postgresql://postgres:postgres@localhost:5432/gabriel?schema=public";
 
 export default defineConfig({
   schema: "prisma/schema.prisma",

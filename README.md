@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/social-preview.png" alt="Owly" width="100%" />
+  <img src="docs/social-preview.png" alt="Gabriel" width="100%" />
 </p>
 
 <p align="center">
@@ -10,14 +10,15 @@
   <a href="#api">API</a> &middot;
   <a href="#tech-stack">Tech Stack</a> &middot;
   <a href="docs/wiki/Home.md">Wiki</a> &middot;
-  <a href="#roadmap">Roadmap</a>
+  <a href="#roadmap">Roadmap</a> &middot;
+  <a href="CONTRIBUTING.md">Contributing</a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/Hesper-Labs/owly/actions/workflows/ci.yml"><img src="https://github.com/Hesper-Labs/owly/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+  <a href="https://github.com/LilGabrielDev/gabriel/actions/workflows/ci.yml"><img src="https://github.com/LilGabrielDev/gabriel/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
   <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License" />
   <img src="https://img.shields.io/badge/version-0.2.2-brightgreen.svg" alt="Version" />
-  <img src="https://img.shields.io/badge/tests-274%20passed-success.svg" alt="Tests" />
+  <img src="https://img.shields.io/badge/tests-309%20passed-success.svg" alt="Tests" />
   <img src="https://img.shields.io/badge/helm-ready-0F1689.svg" alt="Helm" />
   <img src="https://img.shields.io/badge/node-%3E%3D20-green.svg" alt="Node" />
   <img src="https://img.shields.io/badge/typescript-5.x-blue.svg" alt="TypeScript" />
@@ -27,14 +28,14 @@
 </p>
 
 <p align="center">
-  <img src="docs/demo.gif" alt="Owly Demo" width="700" />
+  <img src="docs/demo.gif" alt="Gabriel Demo" width="700" />
 </p>
 
 ---
 
-## What is Owly?
+## What is Gabriel?
 
-Owly is a **self-hosted AI customer support agent** that small businesses and individuals can run on their own machines -- completely free. Connect your WhatsApp, Email, and Phone channels, add your business knowledge, and let the AI handle customer inquiries 24/7. Owly automatically identifies customers across channels -- someone who emails first and later calls gets a unified profile with full conversation history.
+Gabriel is a **self-hosted AI customer support agent** that small businesses and individuals can run on their own machines -- completely free. Connect your WhatsApp, Email, and Phone channels, add your business knowledge, and let the AI handle customer inquiries 24/7. Gabriel automatically identifies customers across channels -- someone who emails first and later calls gets a unified profile with full conversation history.
 
 <table>
   <tr>
@@ -77,7 +78,7 @@ Connect all your customer communication channels in one place.
   <tr>
     <td width="33%">
       <h4 align="center">WhatsApp</h4>
-      <p align="center">Connect via QR code scan or Business API. Handles text, images, voice messages, and documents.</p>
+      <p align="center">QR scan or pairing code via external <code>whatsapp-service</code> (Baileys). Host on Katabump, Render, or Railway; connect from the dashboard.</p>
     </td>
     <td width="33%">
       <h4 align="center">Email</h4>
@@ -98,7 +99,7 @@ Connect all your customer communication channels in one place.
 
 ### AI-Powered Conversations
 
-Owly uses OpenAI GPT (extensible to Claude, Ollama) with your knowledge base to provide accurate, on-brand responses. During conversations, the AI can autonomously:
+Gabriel uses OpenAI GPT (extensible to Claude, Ollama) with your knowledge base to provide accurate, on-brand responses. During conversations, the AI can autonomously:
 
 - **Create tickets** when customers report problems
 - **Route issues** to the right department based on expertise matching
@@ -115,7 +116,7 @@ Owly uses OpenAI GPT (extensible to Claude, Ollama) with your knowledge base to 
 
 ### Customer CRM & Cross-Channel Continuity
 
-Every customer gets a unified profile across all channels -- conversations, notes, tags, and contact history in one place. Owly automatically resolves customer identity when someone switches channels (WhatsApp to Email to Phone), keeping the full context available to both the AI and your team.
+Every customer gets a unified profile across all channels -- conversations, notes, tags, and contact history in one place. Gabriel automatically resolves customer identity when someone switches channels (WhatsApp to Email to Phone), keeping the full context available to both the AI and your team.
 
 <p align="center">
   <img src="docs/screenshots/04-customers.png" alt="Customer Management" width="100%" />
@@ -125,7 +126,7 @@ Every customer gets a unified profile across all channels -- conversations, note
 
 ### Knowledge Base
 
-Train your AI with your business information. Organize entries into categories, set priorities, and test responses before going live.
+Train your AI with your business information. Organize entries into categories, set priorities, and test responses at `/knowledge/test` before going live.
 
 <table>
   <tr>
@@ -224,9 +225,17 @@ Manage users, API keys, webhooks, and explore the full REST API with interactive
   </tr>
 </table>
 
+### Dashboard & System Tools
+
+- **Quick Actions** — jump to any section from the home dashboard
+- **System Status** — live health for app, database, AI, and WhatsApp
+- **Global search** — find conversations from the header
+- **Help & Sitemap** — all pages and paths at `/help`
+- **Onboarding checklist** — guided setup on first login
+
 ### Dark Mode
 
-Full dark theme with persistent preference, applied across all 19 pages.
+Full dark theme with persistent preference, applied across all 20 dashboard pages.
 
 <p align="center">
   <img src="docs/screenshots/19-dark-mode.png" alt="Dark Mode" width="100%" />
@@ -264,8 +273,8 @@ Full dark theme with persistent preference, applied across all 19 pages.
 
 ```bash
 # Clone the repository
-git clone https://github.com/hsperus/owly.git
-cd owly
+git clone https://github.com/LilGabrielDev/gabrielagent.git
+cd gabrielagent
 
 # Install dependencies
 npm install
@@ -291,8 +300,8 @@ The pooled hostname includes `-pooler`; Prisma CLI commands use `DIRECT_URL` for
 ### Option 2: Docker Compose
 
 ```bash
-git clone https://github.com/hsperus/owly.git
-cd owly
+git clone https://github.com/LilGabrielDev/gabrielagent.git
+cd gabrielagent
 
 cp .env.example .env
 # Edit .env with your API keys
@@ -305,7 +314,7 @@ Open [http://localhost:3000](http://localhost:3000) -- the setup wizard will gui
 <p align="center">
   <img src="docs/screenshots/01-login.png" alt="Login Page" width="500" />
   <br/>
-  <em>Clean login page with Owly branding</em>
+  <em>Clean login page with Gabriel branding</em>
 </p>
 
 ---
@@ -321,7 +330,7 @@ All configuration is done through the admin dashboard -- no config files to edit
 | Voice | Settings > Voice | ElevenLabs API key and voice selection |
 | Phone | Settings > Phone | Twilio Account SID, auth token, phone number |
 | Email | Settings > Email | SMTP and IMAP server configuration |
-| WhatsApp | Channels > WhatsApp | QR code scan or Business API |
+| WhatsApp | Channels > WhatsApp | QR, pairing code, or Business API (via `WHATSAPP_SERVICE_URL`) |
 | Team | Team | Departments, members, expertise areas |
 | SLA | SLA Rules | Response and resolution time targets |
 | Schedule | Business Hours | Weekly availability and offline messages |
@@ -333,7 +342,7 @@ All configuration is done through the admin dashboard -- no config files to edit
 
 ## API
 
-Owly provides a full REST API with **OpenAPI 3.0 spec** at `/api/openapi.json`. Interactive documentation with live testing is available at `/api-docs` in the dashboard. All list endpoints are paginated (max 100/page) with standardized response format.
+Gabriel provides a full REST API with **OpenAPI 3.0 spec** at `/api/openapi.json`. Interactive documentation with live testing is available at `/api-docs` in the dashboard. All list endpoints are paginated (max 100/page) with standardized response format.
 
 ```bash
 # Send a message and get AI response
@@ -404,10 +413,9 @@ Every API response includes enterprise headers: `X-Request-Id`, `X-RateLimit-Lim
 | **Voice TTS** | ElevenLabs |
 | **Voice STT** | OpenAI Whisper |
 | **Phone** | Twilio Voice API |
-| **WhatsApp** | whatsapp-web.js |
-| **Auth** | JWT + bcrypt (12 rounds) |
-| **Validation** | Zod schemas on all endpoints |
-| **Testing** | Vitest (274 tests) |
+| **WhatsApp** | Baileys (`whatsapp-service`) — QR & pairing on Katabump/Render/Railway |
+| **Auth** | JWT + bcrypt (`gabriel-token` cookie) |
+| **Testing** | Vitest (309 tests) |
 | **Charts** | Pure CSS/SVG (zero dependencies) |
 | **Deployment** | Docker Compose / Kubernetes (Helm) |
 
@@ -416,39 +424,32 @@ Every API response includes enterprise headers: `X-Request-Id`, `X-RateLimit-Lim
 ## Project Structure
 
 ```
-owly/
+gabrielagent/
 ├── prisma/                  # Database schema, migrations, seed
-├── public/                  # Static assets (logo)
+├── public/                  # Static assets (logo, chat widget)
+├── whatsapp-service/        # Standalone Baileys service (QR/pair/logout)
 ├── docs/
-│   ├── screenshots/         # UI screenshots (20 images)
-│   └── wiki/                # Full documentation (25 pages)
-├── helm/owly/               # Kubernetes Helm chart
-│   ├── Chart.yaml
-│   ├── values.yaml
-│   └── templates/           # K8s manifests (deployment, service, ingress, hpa, etc.)
+│   ├── screenshots/         # UI screenshots
+│   ├── deployment-vercel.md   # Vercel + WhatsApp split deploy
+│   └── wiki/                # Full documentation
+├── helm/gabriel/            # Kubernetes Helm chart
 ├── src/
 │   ├── app/
 │   │   ├── (auth)/          # Login, setup wizard
-│   │   ├── (dashboard)/     # 19 dashboard pages
+│   │   ├── (dashboard)/     # 20 dashboard pages (incl. /help)
 │   │   └── api/             # 60+ REST API endpoints
 │   ├── components/
+│   │   ├── dashboard/       # Quick actions, system status
 │   │   ├── layout/          # Sidebar, header
-│   │   └── ui/              # 12 reusable components
+│   │   └── ui/              # Reusable components
 │   └── lib/
-│       ├── ai/              # AI engine, tools, types
-│       ├── channels/        # WhatsApp, email, phone
-│       ├── customer-resolver.ts  # Cross-channel identity resolution
-│       ├── errors.ts        # Standardized error responses
-│       ├── logger.ts        # Structured logging
-│       ├── pagination.ts    # Shared pagination helper
-│       ├── rate-limit.ts    # Rate limiting
-│       ├── security.ts      # XSS/CRLF protection, secret masking
-│       ├── validations.ts   # Zod input schemas
-│       ├── webhook-delivery.ts   # Retry logic + HMAC signatures
-│       └── hooks/           # Theme hook
-├── tests/                   # 228 tests (unit, API, security)
+│       ├── ai/              # AI engine, tools
+│       ├── channels/        # WhatsApp proxy, email, phone
+│       └── ...
+├── tests/                   # Unit, API, security tests
 ├── docker-compose.yml
-├── Dockerfile               # Multi-stage, non-root, healthcheck
+├── Dockerfile
+├── CONTRIBUTING.md          # Contributor guide (start here)
 └── .env.example
 ```
 
@@ -471,9 +472,26 @@ Full documentation is available in the [Wiki](docs/wiki/Home.md):
 
 ### Vercel
 
-Owly can be deployed to Vercel for the dashboard, API routes, hosted PostgreSQL, OpenAI, email, Twilio, webhooks, and the embedded widget. WhatsApp Web QR mode is disabled on Vercel because it requires Puppeteer plus persistent local auth storage; use WhatsApp Business API mode or host that worker separately.
+Gabriel can be deployed to **Vercel** for the dashboard and API. WhatsApp QR/pairing runs on a separate **`whatsapp-service`** host (Katabump, Render, Railway, or VPS). Set `WHATSAPP_SERVICE_URL` on Vercel to point at that service.
 
-See [Deploying Owly on Vercel](docs/deployment-vercel.md).
+See [Deploying Gabriel on Vercel](docs/deployment-vercel.md) and [WhatsApp Channel](docs/wiki/WhatsApp-Channel.md).
+
+### WhatsApp Service (Katabump / Render / Railway)
+
+```bash
+cd whatsapp-service
+npm install
+cp .env.example .env
+npm run build
+npm start
+```
+
+Set on the main app:
+
+```env
+WHATSAPP_SERVICE_URL="https://your-subdomain.kdns.fr"
+WHATSAPP_SERVICE_API_KEY="your-shared-key"
+```
 
 ### Docker Compose (recommended for most users)
 
@@ -484,7 +502,7 @@ docker compose up -d
 ### Kubernetes (Helm)
 
 ```bash
-helm install owly helm/owly \
+helm install gabriel helm/gabriel \
   --set database.host=your-postgres-host \
   --set database.password=your-password \
   --set secrets.jwtSecret=$(openssl rand -hex 32) \
@@ -493,7 +511,7 @@ helm install owly helm/owly \
   --set ingress.hosts[0].host=support.yourdomain.com
 ```
 
-The Helm chart includes startup/liveness/readiness probes, horizontal pod autoscaling, Ingress with TLS, PersistentVolumeClaim for WhatsApp sessions, and init container for database migrations. See [`helm/owly/values.yaml`](helm/owly/values.yaml) for all options.
+The Helm chart includes startup/liveness/readiness probes, horizontal pod autoscaling, Ingress with TLS, and init container for database migrations. Set `config.whatsappServiceUrl` for the external WhatsApp service. See [`helm/gabriel/values.yaml`](helm/gabriel/values.yaml).
 
 ---
 
@@ -518,18 +536,16 @@ The Helm chart includes startup/liveness/readiness probes, horizontal pod autosc
 
 ## Contributing
 
-Contributions are welcome! See the [Contributing Guide](docs/wiki/Contributing.md) for details.
+Contributions are welcome! See **[CONTRIBUTING.md](CONTRIBUTING.md)** for setup, feature areas, code style, and the PR checklist.
 
 ```bash
-# Fork, clone, and create a branch
-git checkout -b feature/your-feature
-
-# Make changes and commit
+git checkout -b feat/your-feature
+npm run test && npm run lint && npm run build
 git commit -m 'feat: add your feature'
-
-# Push and open a PR
-git push origin feature/your-feature
+git push origin feat/your-feature
 ```
+
+Also see the in-app sitemap at `/help` after login.
 
 ---
 
@@ -540,8 +556,7 @@ MIT License - see [LICENSE](LICENSE) for details.
 ---
 
 <p align="center">
-  <img src="public/owly.png" alt="Owly" width="48" height="48" /><br/>
-  <strong>Owly</strong> -- AI Customer Support, Enterprise Grade<br/>
+  <img src="public/gabriel.png" alt="Gabriel" width="48" height="48" /><br/>
+  <strong>Gabriel</strong> -- AI Customer Support, Enterprise Grade<br/>
   <sub>Built with Next.js 16, TypeScript, PostgreSQL, and OpenAI</sub>
 </p>
-"# gabrielagent" 

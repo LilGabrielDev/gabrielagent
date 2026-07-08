@@ -139,7 +139,7 @@ export function proxy(request: NextRequest) {
   }
 
   // Check for auth token (cookie) or API key (header)
-  const token = request.cookies.get("owly-token")?.value;
+  const token = request.cookies.get("gabriel-token")?.value;
   const apiKey = request.headers.get("x-api-key");
 
   if (!token && !apiKey) {
@@ -175,7 +175,7 @@ export function proxy(request: NextRequest) {
       );
     }
     const response = NextResponse.redirect(new URL("/login", request.url));
-    response.cookies.delete("owly-token");
+    response.cookies.delete("gabriel-token");
     return response;
   }
 

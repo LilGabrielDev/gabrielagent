@@ -1,8 +1,8 @@
-# Deploying Owly on Vercel
+# Deploying Gabriel on Vercel
 
-Owly can run on Vercel for the Next.js dashboard, API routes, hosted Postgres, OpenAI, email, Twilio, webhooks, and the embedded widget.
+Gabriel can run on Vercel for the Next.js dashboard, API routes, hosted Postgres, OpenAI, email, Twilio, webhooks, and the embedded widget.
 
-WhatsApp Web QR mode is disabled on Vercel because it depends on Puppeteer, a long-running browser process, and persistent local `.wwebjs_auth` storage. For WhatsApp on Vercel, use WhatsApp Business API mode or run the WhatsApp Web worker on a separate long-running host.
+WhatsApp Web QR and pairing code run on a separate `whatsapp-service` host (Render, Railway, Katabump, or VPS). Set `WHATSAPP_SERVICE_URL` on Vercel to point at that service. See [WhatsApp Channel](docs/wiki/WhatsApp-Channel.md) and `whatsapp-service/README.md`.
 
 ## 1. Create a production database
 
@@ -41,6 +41,8 @@ TWILIO_ACCOUNT_SID=""
 TWILIO_AUTH_TOKEN=""
 TWILIO_PHONE_NUMBER=""
 ELEVENLABS_API_KEY=""
+WHATSAPP_SERVICE_URL="https://gabriel-whatsapp.kdns.fr"
+WHATSAPP_SERVICE_API_KEY=""
 NEXTAUTH_SECRET=""
 CORS_ORIGIN=""
 ```
@@ -64,4 +66,4 @@ https://your-vercel-domain.vercel.app/api/health
 - Vercel does not use the Dockerfile or `docker-compose.yml`.
 - `prisma migrate deploy` should run whenever migrations change.
 - Server-sent events under `/api/realtime` can work for light usage, but Vercel function duration limits still apply.
-- For full WhatsApp Web QR support, deploy the Docker version on a long-running host instead of Vercel.
+- For WhatsApp Web QR or pairing, deploy `whatsapp-service/` on a long-running host and set `WHATSAPP_SERVICE_URL`.

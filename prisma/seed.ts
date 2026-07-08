@@ -1,3 +1,4 @@
+
 import { PrismaClient } from "../src/generated/prisma/client";
 import { PrismaNeon } from "@prisma/adapter-neon";
 import bcrypt from "bcryptjs";
@@ -8,7 +9,7 @@ const connectionString =
   process.env.POSTGRES_PRISMA_URL ||
   process.env.POSTGRES_URL ||
   process.env.DATABASE_URL ||
-  "postgresql://postgres:postgres@localhost:5432/owly?schema=public";
+  "postgresql://postgres:postgres@localhost:5432/gabriel?schema=public";
 const adapter = new PrismaNeon({ connectionString });
 const prisma = new PrismaClient({ adapter });
 

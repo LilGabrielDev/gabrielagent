@@ -1,7 +1,7 @@
+
 "use client";
 
 import { Header } from "@/components/layout/header";
-import Image from "next/image";
 import {
   MessageCircle,
   Mail,
@@ -47,14 +47,14 @@ function StatusBadge({ status }: { status: string }) {
       className={cn(
         "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium",
         isConnected
-          ? "bg-owly-success/10 text-owly-success"
-          : "bg-owly-danger/10 text-owly-danger"
+          ? "bg-gabriel-success/10 text-gabriel-success"
+          : "bg-gabriel-danger/10 text-gabriel-danger"
       )}
     >
       <span
         className={cn(
           "w-1.5 h-1.5 rounded-full",
-          isConnected ? "bg-owly-success" : "bg-owly-danger"
+          isConnected ? "bg-gabriel-success" : "bg-gabriel-danger"
         )}
       />
       {isConnected ? "Connected" : "Disconnected"}
@@ -76,8 +76,8 @@ function Toggle({
       aria-checked={enabled}
       onClick={() => onChange(!enabled)}
       className={cn(
-        "relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-owly-primary/30 focus:ring-offset-2",
-        enabled ? "bg-owly-primary" : "bg-owly-border"
+        "relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-gabriel-primary/30 focus:ring-offset-2",
+        enabled ? "bg-gabriel-primary" : "bg-gabriel-border"
       )}
     >
       <span
@@ -109,7 +109,7 @@ function FieldInput({
 
   return (
     <div>
-      <label className="block text-xs font-medium text-owly-text-light mb-1">
+      <label className="block text-xs font-medium text-gabriel-text-light mb-1">
         {label}
       </label>
       <div className="relative">
@@ -118,13 +118,13 @@ function FieldInput({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
-          className="w-full px-3 py-2 text-sm border border-owly-border rounded-lg bg-owly-bg text-owly-text placeholder:text-owly-text-light/50 focus:outline-none focus:ring-2 focus:ring-owly-primary/30 focus:border-owly-primary transition-colors"
+          className="w-full px-3 py-2 text-sm border border-gabriel-border rounded-lg bg-gabriel-bg text-gabriel-text placeholder:text-gabriel-text-light/50 focus:outline-none focus:ring-2 focus:ring-gabriel-primary/30 focus:border-gabriel-primary transition-colors"
         />
         {isSecret && (
           <button
             type="button"
             onClick={() => setVisible(!visible)}
-            className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-owly-text-light hover:text-owly-text transition-colors"
+            className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gabriel-text-light hover:text-gabriel-text transition-colors"
           >
             {visible ? (
               <EyeOff className="h-3.5 w-3.5" />
@@ -156,7 +156,7 @@ function WhatsAppCard({
   const cfg = channel.config as Record<string, string>;
   const [isActive, setIsActive] = useState(channel.isActive);
   const [mode, setMode] = useState<WhatsAppMode>(
-    (cfg.mode as WhatsAppMode) || "web"
+    (cfg.mode as WhatsAppMode) || "pairing"
   );
   const [apiKey, setApiKey] = useState(cfg.apiKey || "");
   const [phoneNumber, setPhoneNumber] = useState(cfg.phoneNumber || "");
@@ -186,8 +186,13 @@ function WhatsAppCard({
     setConnectionCode(nextCode);
     setConnectionMessage(status.message || null);
 
+    if (status.status === "qr_ready" && status.qr) {
+      setConnecting(true);
+      return;
+    }
+
     if (mode === "pairing" && status.status === "pairing_ready" && status.pairingCode) {
-      setConnecting(false);
+      setConnecting(true);
       return;
     }
 
@@ -216,6 +221,7 @@ function WhatsAppCard({
           action: "connect",
           mode,
           phoneNumber: mode === "pairing" ? pairingPhoneNumber : phoneNumber,
+          apiKey: mode === "api" ? apiKey : undefined,
         }),
       });
       const data = await res.json().catch(() => null);
@@ -242,17 +248,17 @@ function WhatsAppCard({
   };
 
   return (
-    <div className="bg-owly-surface rounded-xl border border-owly-border overflow-hidden">
+    <div className="bg-gabriel-surface rounded-xl border border-gabriel-border overflow-hidden">
       {/* Header */}
-      <div className="px-5 py-4 border-b border-owly-border">
+      <div className="px-5 py-4 border-b border-gabriel-border">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-lg bg-green-50 text-green-600">
               <MessageCircle className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="font-semibold text-owly-text">WhatsApp</h3>
-              <p className="text-xs text-owly-text-light mt-0.5">
+              <h3 className="font-semibold text-gabriel-text">WhatsApp</h3>
+              <p className="text-xs text-gabriel-text-light mt-0.5">
                 Messaging via WhatsApp Web, API, or Pairing Code
               </p>
             </div>
@@ -268,7 +274,7 @@ function WhatsAppCard({
       <div className="p-5 space-y-4">
         {/* Mode selector */}
         <div>
-          <label className="block text-xs font-medium text-owly-text-light mb-2">
+          <label className="block text-xs font-medium text-gabriel-text-light mb-2">
             Connection Method
           </label>
           <div className="flex gap-2">
@@ -279,7 +285,7 @@ function WhatsAppCard({
                 "flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border transition-colors",
                 mode === "web"
                   ? "border-green-300 bg-green-50 text-green-700"
-                  : "border-owly-border bg-owly-bg text-owly-text-light hover:bg-owly-primary-50 hover:text-owly-text"
+                  : "border-gabriel-border bg-gabriel-bg text-gabriel-text-light hover:bg-gabriel-primary-50 hover:text-gabriel-text"
               )}
             >
               <QrCode className="h-4 w-4" />
@@ -292,7 +298,7 @@ function WhatsAppCard({
                 "flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border transition-colors",
                 mode === "api"
                   ? "border-green-300 bg-green-50 text-green-700"
-                  : "border-owly-border bg-owly-bg text-owly-text-light hover:bg-owly-primary-50 hover:text-owly-text"
+                  : "border-gabriel-border bg-gabriel-bg text-gabriel-text-light hover:bg-gabriel-primary-50 hover:text-gabriel-text"
               )}
             >
               <Key className="h-4 w-4" />
@@ -305,7 +311,7 @@ function WhatsAppCard({
                 "flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border transition-colors",
                 mode === "pairing"
                   ? "border-green-300 bg-green-50 text-green-700"
-                  : "border-owly-border bg-owly-bg text-owly-text-light hover:bg-owly-primary-50 hover:text-owly-text"
+                  : "border-gabriel-border bg-gabriel-bg text-gabriel-text-light hover:bg-gabriel-primary-50 hover:text-gabriel-text"
               )}
             >
               <PhoneCall className="h-4 w-4" />
@@ -339,28 +345,27 @@ function WhatsAppCard({
                 </button>
               </div>
             ) : (
-              <div className="rounded-lg border border-owly-border bg-owly-bg p-6 flex flex-col items-center">
-                <div className="w-48 h-48 bg-white border-2 border-dashed border-owly-border rounded-lg flex items-center justify-center mb-3 overflow-hidden">
+              <div className="rounded-lg border border-gabriel-border bg-gabriel-bg p-6 flex flex-col items-center">
+                <div className="w-48 h-48 bg-white border-2 border-dashed border-gabriel-border rounded-lg flex items-center justify-center mb-3 overflow-hidden relative">
                   {connectionCode ? (
-                    <Image
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
                       src={connectionCode}
                       alt="WhatsApp QR Code"
-                      fill
-                      className="object-contain"
-                      sizes="192px"
+                      className="h-full w-full object-contain p-2"
                     />
                   ) : connecting ? (
                     <Loader2 className="h-8 w-8 animate-spin text-green-600" />
                   ) : (
                     <div className="text-center">
-                      <QrCode className="h-10 w-10 text-owly-text-light/40 mx-auto mb-1" />
-                      <p className="text-xs text-owly-text-light/60">
+                      <QrCode className="h-10 w-10 text-gabriel-text-light/40 mx-auto mb-1" />
+                      <p className="text-xs text-gabriel-text-light/60">
                         QR Code
                       </p>
                     </div>
                   )}
                 </div>
-                <p className="text-xs text-owly-text-light text-center max-w-[220px]">
+                <p className="text-xs text-gabriel-text-light text-center max-w-[220px]">
                   {connectionCode
                     ? "Scan this QR code with WhatsApp on your phone to connect"
                     : "Click Connect to generate a QR code"}
@@ -414,40 +419,40 @@ function WhatsAppCard({
                 </button>
               </div>
             ) : (
-              <div className="rounded-lg border border-owly-border bg-owly-bg p-6">
+              <div className="rounded-lg border border-gabriel-border bg-gabriel-bg p-6">
                 <div className="mb-4">
-                  <p className="text-sm font-semibold text-owly-text mb-2">
+                  <p className="text-sm font-semibold text-gabriel-text mb-2">
                     Pairing Code
                   </p>
-                  <p className="text-xs text-owly-text-light">
-                    A 6-digit code will be generated here. Enter it in WhatsApp Linked Devices {'>'} Link a device.
+                  <p className="text-xs text-gabriel-text-light">
+                    A pairing code will be generated here. Enter it in WhatsApp Linked Devices {'>'} Link a device.
                   </p>
                 </div>
-                <div className="rounded-2xl border border-dashed border-owly-border bg-white p-4 text-center min-h-[120px] flex items-center justify-center">
+                <div className="rounded-2xl border border-dashed border-gabriel-border bg-white p-4 text-center min-h-[120px] flex items-center justify-center">
                   {connectionCode ? (
                     <div className="space-y-2">
-                      <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-owly-text-light">
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-gabriel-text-light">
                         Pairing Code
                       </div>
-                      <div className="font-mono text-2xl font-semibold tracking-[0.35em] text-owly-text break-words">
+                      <div className="font-mono text-2xl font-semibold tracking-[0.35em] text-gabriel-text break-words">
                         {connectionCode}
                       </div>
                     </div>
                   ) : connecting ? (
                     <Loader2 className="h-8 w-8 animate-spin text-green-600" />
                   ) : (
-                    <div className="text-sm text-owly-text-light">
+                    <div className="text-sm text-gabriel-text-light">
                       {connectionMessage ||
                         "Enter a phone number and press Connect to get a pairing code."}
                     </div>
                   )}
                 </div>
                 {connectionMessage && connectionCode && (
-                  <p className="text-xs text-owly-text-light mt-3 text-center">
+                  <p className="text-xs text-gabriel-text-light mt-3 text-center">
                     {connectionMessage}
                   </p>
                 )}
-                <p className="text-xs text-owly-text-light mt-3">
+                <p className="text-xs text-gabriel-text-light mt-3">
                   After the code appears, open WhatsApp on your phone, go to Linked Devices, then Link a Device and type the code.
                 </p>
                 <button
@@ -485,16 +490,31 @@ function WhatsAppCard({
               <div className="rounded-lg border border-green-200 bg-green-50 p-3 flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-green-600" />
                 <span className="text-sm text-green-700">
-                  API connected - Phone: {phoneNumber || "N/A"}
+                  API configured - Phone: {phoneNumber || "N/A"}
                 </span>
               </div>
+            )}
+            {!isConnected && (
+              <button
+                type="button"
+                onClick={handleConnect}
+                disabled={connecting || !apiKey || !phoneNumber}
+                className="w-full flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+              >
+                {connecting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Key className="h-4 w-4" />
+                )}
+                {connecting ? "Saving..." : "Save API Credentials"}
+              </button>
             )}
           </div>
         )}
       </div>
 
       {/* Footer */}
-      <div className="px-5 py-3 border-t border-owly-border bg-owly-bg/50">
+      <div className="px-5 py-3 border-t border-gabriel-border bg-gabriel-bg/50">
         <button
           type="button"
           disabled={saving}
@@ -505,7 +525,7 @@ function WhatsAppCard({
               isActive
             )
           }
-          className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-owly-primary rounded-lg hover:bg-owly-primary-dark disabled:opacity-50 transition-colors"
+          className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-gabriel-primary rounded-lg hover:bg-gabriel-primary-dark disabled:opacity-50 transition-colors"
         >
           {saving ? (
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -558,17 +578,17 @@ function EmailCard({
   };
 
   return (
-    <div className="bg-owly-surface rounded-xl border border-owly-border overflow-hidden">
+    <div className="bg-gabriel-surface rounded-xl border border-gabriel-border overflow-hidden">
       {/* Header */}
-      <div className="px-5 py-4 border-b border-owly-border">
+      <div className="px-5 py-4 border-b border-gabriel-border">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-lg bg-blue-50 text-blue-600">
               <Mail className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="font-semibold text-owly-text">Email</h3>
-              <p className="text-xs text-owly-text-light mt-0.5">
+              <h3 className="font-semibold text-gabriel-text">Email</h3>
+              <p className="text-xs text-gabriel-text-light mt-0.5">
                 Send and receive via SMTP / IMAP
               </p>
             </div>
@@ -584,7 +604,7 @@ function EmailCard({
       <div className="p-5 space-y-5">
         {/* SMTP */}
         <div>
-          <h4 className="text-xs font-semibold uppercase tracking-wider text-owly-text-light mb-3">
+          <h4 className="text-xs font-semibold uppercase tracking-wider text-gabriel-text-light mb-3">
             SMTP Settings (Outgoing)
           </h4>
           <div className="grid grid-cols-2 gap-3">
@@ -627,7 +647,7 @@ function EmailCard({
 
         {/* IMAP */}
         <div>
-          <h4 className="text-xs font-semibold uppercase tracking-wider text-owly-text-light mb-3">
+          <h4 className="text-xs font-semibold uppercase tracking-wider text-gabriel-text-light mb-3">
             IMAP Settings (Incoming)
           </h4>
           <div className="grid grid-cols-2 gap-3">
@@ -670,7 +690,7 @@ function EmailCard({
       </div>
 
       {/* Footer */}
-      <div className="px-5 py-3 border-t border-owly-border bg-owly-bg/50 flex items-center gap-2">
+      <div className="px-5 py-3 border-t border-gabriel-border bg-gabriel-bg/50 flex items-center gap-2">
         <button
           type="button"
           disabled={saving}
@@ -691,7 +711,7 @@ function EmailCard({
               isActive
             )
           }
-          className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-owly-primary rounded-lg hover:bg-owly-primary-dark disabled:opacity-50 transition-colors"
+          className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-gabriel-primary rounded-lg hover:bg-gabriel-primary-dark disabled:opacity-50 transition-colors"
         >
           {saving ? (
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -759,17 +779,17 @@ function PhoneCard({
   };
 
   return (
-    <div className="bg-owly-surface rounded-xl border border-owly-border overflow-hidden">
+    <div className="bg-gabriel-surface rounded-xl border border-gabriel-border overflow-hidden">
       {/* Header */}
-      <div className="px-5 py-4 border-b border-owly-border">
+      <div className="px-5 py-4 border-b border-gabriel-border">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-lg bg-purple-50 text-purple-600">
               <Phone className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="font-semibold text-owly-text">Phone</h3>
-              <p className="text-xs text-owly-text-light mt-0.5">
+              <h3 className="font-semibold text-gabriel-text">Phone</h3>
+              <p className="text-xs text-gabriel-text-light mt-0.5">
                 Voice calls via Twilio and ElevenLabs
               </p>
             </div>
@@ -785,7 +805,7 @@ function PhoneCard({
       <div className="p-5 space-y-5">
         {/* Twilio */}
         <div>
-          <h4 className="text-xs font-semibold uppercase tracking-wider text-owly-text-light mb-3">
+          <h4 className="text-xs font-semibold uppercase tracking-wider text-gabriel-text-light mb-3">
             Twilio Settings
           </h4>
           <div className="space-y-3">
@@ -813,7 +833,7 @@ function PhoneCard({
 
         {/* ElevenLabs */}
         <div>
-          <h4 className="text-xs font-semibold uppercase tracking-wider text-owly-text-light mb-3">
+          <h4 className="text-xs font-semibold uppercase tracking-wider text-gabriel-text-light mb-3">
             ElevenLabs Voice
           </h4>
           <div className="space-y-3">
@@ -825,13 +845,13 @@ function PhoneCard({
               isSecret
             />
             <div>
-              <label className="block text-xs font-medium text-owly-text-light mb-1">
+              <label className="block text-xs font-medium text-gabriel-text-light mb-1">
                 Voice
               </label>
               <select
                 value={elevenLabsVoice}
                 onChange={(e) => setElevenLabsVoice(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-owly-border rounded-lg bg-owly-bg text-owly-text focus:outline-none focus:ring-2 focus:ring-owly-primary/30 focus:border-owly-primary transition-colors"
+                className="w-full px-3 py-2 text-sm border border-gabriel-border rounded-lg bg-gabriel-bg text-gabriel-text focus:outline-none focus:ring-2 focus:ring-gabriel-primary/30 focus:border-gabriel-primary transition-colors"
               >
                 {voiceOptions.map((v) => (
                   <option key={v.id} value={v.id}>
@@ -853,7 +873,7 @@ function PhoneCard({
       </div>
 
       {/* Footer */}
-      <div className="px-5 py-3 border-t border-owly-border bg-owly-bg/50 flex items-center gap-2">
+      <div className="px-5 py-3 border-t border-gabriel-border bg-gabriel-bg/50 flex items-center gap-2">
         <button
           type="button"
           disabled={saving}
@@ -870,7 +890,7 @@ function PhoneCard({
               isActive
             )
           }
-          className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-owly-primary rounded-lg hover:bg-owly-primary-dark disabled:opacity-50 transition-colors"
+          className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-gabriel-primary rounded-lg hover:bg-gabriel-primary-dark disabled:opacity-50 transition-colors"
         >
           {saving ? (
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -1003,15 +1023,15 @@ export default function ChannelsPage() {
       <div className="flex-1 overflow-auto p-6">
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 className="h-8 w-8 animate-spin text-owly-primary" />
+            <Loader2 className="h-8 w-8 animate-spin text-gabriel-primary" />
           </div>
         ) : fetchError ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
-            <p className="font-medium text-owly-text">Could not load channels</p>
-            <p className="text-sm text-owly-text-light mt-1">{fetchError}</p>
+            <p className="font-medium text-gabriel-text">Could not load channels</p>
+            <p className="text-sm text-gabriel-text-light mt-1">{fetchError}</p>
             <button
               onClick={() => { setLoading(true); fetchChannels(); }}
-              className="mt-3 px-4 py-2 text-sm font-medium text-white bg-owly-primary rounded-lg hover:bg-owly-primary/90 transition-colors"
+              className="mt-3 px-4 py-2 text-sm font-medium text-white bg-gabriel-primary rounded-lg hover:bg-gabriel-primary/90 transition-colors"
             >
               Retry
             </button>
@@ -1046,8 +1066,8 @@ export default function ChannelsPage() {
           className={cn(
             "fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg text-sm font-medium transition-all animate-in slide-in-from-bottom-4 duration-300",
             toast.type === "success"
-              ? "bg-owly-success text-white"
-              : "bg-owly-danger text-white"
+              ? "bg-gabriel-success text-white"
+              : "bg-gabriel-danger text-white"
           )}
         >
           {toast.type === "success" ? (

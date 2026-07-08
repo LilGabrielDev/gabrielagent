@@ -118,8 +118,8 @@ function ToastContainer({ toasts }: { toasts: Toast[] }) {
           className={cn(
             "flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg text-sm font-medium transition-all animate-in slide-in-from-right",
             t.type === "success"
-              ? "bg-owly-success text-white"
-              : "bg-owly-danger text-white"
+              ? "bg-gabriel-success text-white"
+              : "bg-gabriel-danger text-white"
           )}
         >
           {t.type === "success" ? (
@@ -149,11 +149,11 @@ function FormField({
 }) {
   return (
     <div className="space-y-1.5">
-      <label className="block text-sm font-medium text-owly-text">
+      <label className="block text-sm font-medium text-gabriel-text">
         {label}
       </label>
       {description && (
-        <p className="text-xs text-owly-text-light">{description}</p>
+        <p className="text-xs text-gabriel-text-light">{description}</p>
       )}
       {children}
     </div>
@@ -161,7 +161,7 @@ function FormField({
 }
 
 const inputClasses =
-  "w-full px-3 py-2 text-sm border border-owly-border rounded-lg bg-owly-bg text-owly-text placeholder:text-owly-text-light/60 focus:outline-none focus:ring-2 focus:ring-owly-primary/30 focus:border-owly-primary transition-colors";
+  "w-full px-3 py-2 text-sm border border-gabriel-border rounded-lg bg-gabriel-bg text-gabriel-text placeholder:text-gabriel-text-light/60 focus:outline-none focus:ring-2 focus:ring-gabriel-primary/30 focus:border-gabriel-primary transition-colors";
 
 function TextInput({
   value,
@@ -277,7 +277,7 @@ function PasswordInput({
       <button
         type="button"
         onClick={() => setVisible(!visible)}
-        className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-owly-text-light hover:text-owly-text rounded transition-colors"
+        className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gabriel-text-light hover:text-gabriel-text rounded transition-colors"
       >
         {visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
       </button>
@@ -309,9 +309,9 @@ function SliderInput({
         min={min}
         max={max}
         step={step}
-        className="flex-1 h-2 rounded-full appearance-none bg-owly-border accent-owly-primary cursor-pointer"
+        className="flex-1 h-2 rounded-full appearance-none bg-gabriel-border accent-gabriel-primary cursor-pointer"
       />
-      <span className="text-sm font-medium text-owly-text w-16 text-right">
+      <span className="text-sm font-medium text-gabriel-text w-16 text-right">
         {displayValue ?? value}
       </span>
     </div>
@@ -330,15 +330,15 @@ function SaveButton({
   saving: boolean;
 }) {
   return (
-    <div className="flex justify-end pt-4 border-t border-owly-border">
+    <div className="flex justify-end pt-4 border-t border-gabriel-border">
       <button
         onClick={onClick}
         disabled={saving}
         className={cn(
           "flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-colors",
           saving
-            ? "bg-owly-primary/60 text-white cursor-not-allowed"
-            : "bg-owly-primary hover:bg-owly-primary-dark text-white"
+            ? "bg-gabriel-primary/60 text-white cursor-not-allowed"
+            : "bg-gabriel-primary hover:bg-gabriel-primary-dark text-white"
         )}
       >
         {saving ? (
@@ -515,8 +515,8 @@ function VoiceSection({
 }) {
   return (
     <div className="space-y-5">
-      <div className="p-4 rounded-lg bg-owly-primary-50/50 border border-owly-primary/20">
-        <p className="text-sm text-owly-text">
+      <div className="p-4 rounded-lg bg-gabriel-primary-50/50 border border-gabriel-primary/20">
+        <p className="text-sm text-gabriel-text">
           Connect your ElevenLabs account to enable AI-powered voice responses for phone calls.
         </p>
       </div>
@@ -547,8 +547,8 @@ function PhoneSection({
 }) {
   return (
     <div className="space-y-5">
-      <div className="p-4 rounded-lg bg-owly-primary-50/50 border border-owly-primary/20">
-        <p className="text-sm text-owly-text">
+      <div className="p-4 rounded-lg bg-gabriel-primary-50/50 border border-gabriel-primary/20">
+        <p className="text-sm text-gabriel-text">
           Configure Twilio to enable phone call support. You will need an active Twilio account with a phone number.
         </p>
       </div>
@@ -588,8 +588,8 @@ function EmailSection({
     <div className="space-y-6">
       {/* SMTP */}
       <div>
-        <h4 className="text-sm font-semibold text-owly-text mb-4 flex items-center gap-2">
-          <div className="w-1.5 h-1.5 rounded-full bg-owly-primary" />
+        <h4 className="text-sm font-semibold text-gabriel-text mb-4 flex items-center gap-2">
+          <div className="w-1.5 h-1.5 rounded-full bg-gabriel-primary" />
           Outgoing Mail (SMTP)
         </h4>
         <div className="space-y-4">
@@ -638,8 +638,8 @@ function EmailSection({
 
       {/* IMAP */}
       <div>
-        <h4 className="text-sm font-semibold text-owly-text mb-4 flex items-center gap-2">
-          <div className="w-1.5 h-1.5 rounded-full bg-owly-primary" />
+        <h4 className="text-sm font-semibold text-gabriel-text mb-4 flex items-center gap-2">
+          <div className="w-1.5 h-1.5 rounded-full bg-gabriel-primary" />
           Incoming Mail (IMAP)
         </h4>
         <div className="space-y-4">
@@ -691,12 +691,12 @@ function WhatsAppSection({
 }) {
   return (
     <div className="space-y-5">
-      <div className="p-4 rounded-lg bg-owly-primary-50/50 border border-owly-primary/20">
-        <p className="text-sm text-owly-text">
+      <div className="p-4 rounded-lg bg-gabriel-primary-50/50 border border-gabriel-primary/20">
+        <p className="text-sm text-gabriel-text">
           Choose between WhatsApp Web (free, requires QR scan) or the official WhatsApp Business API (paid, more reliable).
         </p>
       </div>
-      <FormField label="Connection Mode" description="Select how Owly connects to WhatsApp.">
+      <FormField label="Connection Mode" description="Select how Gabriel connects to WhatsApp.">
         <SelectInput
           value={data.whatsappMode}
           onChange={(v) => update("whatsappMode", v)}
@@ -833,9 +833,9 @@ export default function SettingsPage() {
   if (loading) {
     return (
       <>
-        <Header title="Settings" description="Configure your Owly instance" />
+        <Header title="Settings" description="Configure your Gabriel instance" />
         <div className="flex-1 flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-owly-primary" />
+          <Loader2 className="h-8 w-8 animate-spin text-gabriel-primary" />
         </div>
       </>
     );
@@ -843,11 +843,11 @@ export default function SettingsPage() {
 
   return (
     <>
-      <Header title="Settings" description="Configure your Owly instance" />
+      <Header title="Settings" description="Configure your Gabriel instance" />
       <div className="flex-1 overflow-auto p-6">
         <div className="max-w-4xl mx-auto">
           {/* Tab navigation */}
-          <div className="flex gap-1 p-1 bg-owly-bg rounded-xl border border-owly-border mb-6 overflow-x-auto">
+          <div className="flex gap-1 p-1 bg-gabriel-bg rounded-xl border border-gabriel-border mb-6 overflow-x-auto">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.key;
@@ -858,8 +858,8 @@ export default function SettingsPage() {
                   className={cn(
                     "flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap",
                     isActive
-                      ? "bg-owly-surface text-owly-primary shadow-sm"
-                      : "text-owly-text-light hover:text-owly-text hover:bg-owly-surface/50"
+                      ? "bg-gabriel-surface text-gabriel-primary shadow-sm"
+                      : "text-gabriel-text-light hover:text-gabriel-text hover:bg-gabriel-surface/50"
                   )}
                 >
                   <Icon className="h-4 w-4" />
@@ -870,12 +870,12 @@ export default function SettingsPage() {
           </div>
 
           {/* Section content */}
-          <div className="bg-owly-surface rounded-xl border border-owly-border p-6 space-y-6">
+          <div className="bg-gabriel-surface rounded-xl border border-gabriel-border p-6 space-y-6">
             <div>
-              <h3 className="text-lg font-semibold text-owly-text">
+              <h3 className="text-lg font-semibold text-gabriel-text">
                 {tabs.find((t) => t.key === activeTab)?.label}
               </h3>
-              <p className="text-sm text-owly-text-light mt-0.5">
+              <p className="text-sm text-gabriel-text-light mt-0.5">
                 {activeTab === "general" &&
                   "Configure your business identity and communication preferences."}
                 {activeTab === "ai" &&

@@ -3,11 +3,11 @@ services:
     build: .
     restart: unless-stopped
     ports:
-      - "${PORT:-4000}:4000"
+      - "${PORT:-3000}:3000"
     env_file:
       - .env
     environment:
-      PORT: 4000
+      PORT: 3000
       SESSION_PATH: /app/sessions
     volumes:
       - whatsapp_sessions:/app/sessions
