@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { formatErrorForDisplay } from "@/lib/api-error";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -48,14 +49,15 @@ export default function LoginPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || "Login failed. Please try again.");
+        const errorMessage = data.error?.message || data.error || "Login failed. Please try again.";
+        setError(errorMessage);
         setLoading(false);
         return;
       }
 
       router.replace("/");
-    } catch {
-      setError("An unexpected error occurred. Please try again.");
+    } catch (error) {
+      setError(formatErrorForDisplay(error));
       setLoading(false);
     }
   }
