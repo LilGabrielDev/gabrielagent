@@ -2,11 +2,10 @@ services:
   - type: web
     name: gabriel-whatsapp-service
     runtime: docker
-    rootDir: whatsapp-service
     plan: starter
     autoDeploy: true
-    dockerfilePath: Dockerfile
-    dockerContext: .
+    dockerfilePath: whatsapp-service/Dockerfile
+    dockerContext: whatsapp-service
     healthCheckPath: /health
     disk:
       name: whatsapp-sessions
