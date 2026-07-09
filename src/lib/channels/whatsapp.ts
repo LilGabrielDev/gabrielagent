@@ -206,7 +206,7 @@ export async function getWhatsAppStatus(
 
   try {
     const remote = await requestJson<RemoteStatusResponse>(
-      `/api/whatsapp/status/${encodeURIComponent(sessionId)}`,
+      `/api/session/${encodeURIComponent(sessionId)}/status`,
       { method: "GET" },
       10000
     );
@@ -248,7 +248,7 @@ export async function initWhatsApp(
   }
 
   if (mode === "web") {
-    const remote = await requestJson<RemotePairResponse>("/api/whatsapp/qr", {
+    const remote = await requestJson<RemotePairResponse>(`/api/session/${encodeURIComponent(sessionId)}/qr`, {
       method: "POST",
       body: JSON.stringify({ sessionId }),
     });

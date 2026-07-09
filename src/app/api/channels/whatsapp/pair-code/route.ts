@@ -50,7 +50,7 @@ export async function GET(request: Request) {
     );
   }
 
-  const response = await fetch(`${baseUrl}/api/whatsapp/pair`, {
+  const response = await fetch(`${baseUrl}/api/session/${encodeURIComponent(searchParams.get("sessionId") || "default")}/pair`, {
     method: "POST",
     headers: getServiceHeaders(),
     body: JSON.stringify({

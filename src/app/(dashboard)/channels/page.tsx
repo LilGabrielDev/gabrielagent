@@ -263,20 +263,26 @@ function WhatsAppCard({
         return;
       }
 
+      const sessionId = "default";
+      await backendRequest<WhatsAppBackendResponse>("/api/session/create", {
+        method: "POST",
+        body: JSON.stringify({ sessionId }),
+      });
+
       if (mode === "web") {
-        data = await backendRequest<WhatsAppBackendResponse>("/session/qr", {
+        data = await backendRequest<WhatsAppBackendResponse>(`/api/session/${encodeURIComponent(sessionId)}/qr`, {
           method: "POST",
-          body: JSON.stringify({ sessionId: "default" }),
+          body: JSON.stringify({ sessionId }),
         });
       } else {
         const normalizedPhoneNumber = pairingPhoneNumber.replace(/[^0-9]/g, "");
         if (normalizedPhoneNumber.length < 10) {
           throw new Error("A valid phone number is required for pairing mode");
         }
-        data = await backendRequest<WhatsAppBackendResponse>("/session/pair", {
+        data = await backendRequest<WhatsAppBackendResponse>(`/api/session/${encodeURIComponent(sessionId)}/pair`, {
           method: "POST",
           body: JSON.stringify({
-            sessionId: "default",
+            sessionId,
             phoneNumber: normalizedPhoneNumber,
           }),
         });
