@@ -220,59 +220,68 @@ app.use((error: unknown, _request: Request, response: Response, _next: NextFunct
   });
 });
 
-await sessions.bootstrap();
+async function start() {
+  try {
+    await sessions.bootstrap();
 
-const server = app.listen(config.port, () => {
-  logger.info(
-    {
-      port: config.port,
-      sessionPath: config.sessionPath,
-      sessionStore: config.sessionStore,
-      corsOrigins: config.corsOrigins,
-      publicUrl: config.publicUrl,
-      authEnabled: Boolean(config.apiKey),
-    },
-    "WhatsApp service listening"
-  );
-});
+    const server = app.listen(config.port, () => {
+      logger.info(
+        {
+          port: config.port,
+          sessionPath: config.sessionPath,
+          sessionStore: config.sessionStore,
+          corsOrigins: config.corsOrigins,
+          publicUrl: config.publicUrl,
+          authEnabled: Boolean(config.apiKey),
+        },
+        "WhatsApp service listening"
+      );
+    });
 
-const sockets = new Set<WebSocket>();
-const websocketServer = new WebSocketServer({ server, path: "/ws" });
+    const sockets = new Set<WebSocket>();
+    const websocketServer = new WebSocketServer({ server, path: "/ws" });
 
-function send(socket: WebSocket, payload: unknown) {
-  if (socket.readyState === WebSocket.OPEN) {
-    socket.send(JSON.stringify(payload));
+    function send(socket: WebSocket, payload: unknown) {
+      if (socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify(payload));
+      }
+    }
+
+    websocketServer.on("connection", (socket, request) => {
+      const origin = request.headers.origin;
+      if (!isAllowedOrigin(origin)) {
+        socket.close(1008, "Origin is not allowed");
+        return;
+      }
+
+      sockets.add(socket);
+      send(socket, {
+        event: "ready",
+        sessionId: "default",
+        status: sessions.getStatus("default"),
+      });
+
+      socket.on("close", () => sockets.delete(socket));
+    });
+
+    sessions.onEvent((event) => {
+      for (const socket of sockets) {
+        send(socket, event);
+      }
+    });
+
+    function shutdown(signal: string) {
+      logger.info({ signal }, "Shutting down WhatsApp service");
+      websocketServer.close();
+      server.close(() => process.exit(0));
+    }
+
+    process.on("SIGINT", shutdown);
+    process.on("SIGTERM", shutdown);
+  } catch (error) {
+    logger.error({ error }, "Failed to start WhatsApp service");
+    process.exit(1);
   }
 }
 
-websocketServer.on("connection", (socket, request) => {
-  const origin = request.headers.origin;
-  if (!isAllowedOrigin(origin)) {
-    socket.close(1008, "Origin is not allowed");
-    return;
-  }
-
-  sockets.add(socket);
-  send(socket, {
-    event: "ready",
-    sessionId: "default",
-    status: sessions.getStatus("default"),
-  });
-
-  socket.on("close", () => sockets.delete(socket));
-});
-
-sessions.onEvent((event) => {
-  for (const socket of sockets) {
-    send(socket, event);
-  }
-});
-
-function shutdown(signal: string) {
-  logger.info({ signal }, "Shutting down WhatsApp service");
-  websocketServer.close();
-  server.close(() => process.exit(0));
-}
-
-process.on("SIGINT", shutdown);
-process.on("SIGTERM", shutdown);
+void start();
