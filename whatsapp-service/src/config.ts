@@ -11,10 +11,15 @@ const defaultOrigins = [
   "http://127.0.0.1:3001",
 ];
 
+function normalizeOrigin(origin?: string) {
+  if (!origin) return undefined;
+  return origin.replace(/\/+$/, "");
+}
+
 function getFrontendOrigins() {
   return [process.env.FRONTEND_URL, process.env.NEXT_PUBLIC_APP_URL]
-    .filter((origin): origin is string => Boolean(origin))
-    .map((origin) => origin.replace(/\/+$/, ""));
+    .map(normalizeOrigin)
+    .filter((origin): origin is string => Boolean(origin));
 }
 
 function parseOrigins(value?: string): string[] {
@@ -32,20 +37,33 @@ export function isAllowedOrigin(origin?: string) {
 }
 
 function validateEnvironment() {
-  const missing: string[] = [];
-  if (!process.env.NODE_ENV) missing.push("NODE_ENV");
-
-  if (missing.length > 0) {
-    throw new Error(`Missing required WhatsApp service environment variables: ${missing.join(", ")}`);
+  if (!process.env.NODE_ENV) {
+    process.env.NODE_ENV = "production";
   }
 
-  if (process.env.NODE_ENV === "production" && !process.env.FRONTEND_URL && !process.env.NEXT_PUBLIC_APP_URL) {
-    console.warn("FRONTEND_URL not set; using default allowed origins for this deployment.");
+  if (!process.env.PORT) {
+    process.env.PORT = "3001";
+  }
+
+  if (!process.env.SESSION_STORE) {
+    process.env.SESSION_STORE = "file";
+  }
+
+  if (!process.env.SESSION_PATH) {
+    process.env.SESSION_PATH = "./sessions";
+  }
+
+  if (!process.env.LOG_LEVEL) {
+    process.env.LOG_LEVEL = "info";
+  }
+
+  if (!process.env.FRONTEND_URL && !process.env.NEXT_PUBLIC_APP_URL) {
+    process.env.FRONTEND_URL = "https://gabrielagent.vercel.app";
   }
 }
 
 function detectPublicUrl() {
-  const explicit = process.env.PUBLIC_URL || process.env.RENDER_EXTERNAL_URL || process.env.RENDER_EXTERNAL_URL || process.env.RAILWAY_PUBLIC_DOMAIN || process.env.FLY_APP_NAME;
+  const explicit = process.env.PUBLIC_URL || process.env.RENDER_EXTERNAL_URL || process.env.RAILWAY_PUBLIC_DOMAIN || process.env.FLY_APP_NAME;
   if (explicit) {
     if (process.env.RAILWAY_PUBLIC_DOMAIN) return `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`;
     if (process.env.FLY_APP_NAME) return `https://${process.env.FLY_APP_NAME}.fly.dev`;
@@ -60,7 +78,7 @@ export const config = {
   apiKey: process.env.API_KEY || "",
   corsOrigins: parseOrigins(process.env.ALLOWED_ORIGINS || process.env.CORS_ORIGIN),
   sessionPath: path.resolve(process.env.SESSION_PATH || "./sessions"),
-  sessionStore: process.env.SESSION_STORE || "file",
+  sessionStore: (process.env.SESSION_STORE || "file").toLowerCase(),
   autoUpdate: {
     enabled: false,
     webhookSecret: process.env.GITHUB_WEBHOOK_SECRET || "",
