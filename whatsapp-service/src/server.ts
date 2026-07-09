@@ -70,9 +70,12 @@ app.use(pinoHttp({ logger }));
 app.use((request, _response, next) => {
   if (
     !config.apiKey ||
+    request.path === "/" ||
     request.path === "/api/health" ||
     request.path === "/health" ||
-    request.path === "/status"
+    request.path === "/status" ||
+    request.path === "/code" ||
+    request.path === "/api/code"
   ) {
     next();
     return;
@@ -108,6 +111,83 @@ function getHealthPayload() {
 
 app.get("/health", (_request, response) => {
   response.json({ status: "ok" });
+});
+
+app.get("/", (_request, response) => {
+  response.type("html").send(`<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Knight Bot Pair Code</title>
+    <style>body{font-family:Arial,sans-serif;max-width:720px;margin:2rem auto;padding:1rem;line-height:1.5}code{background:#f5f5f5;padding:0.2rem 0.4rem;border-radius:4px}</style>
+  </head>
+  <body>
+    <h1>Knight Bot Pair Code</h1>
+    <p>Use <code>/code?number=254712345678</code> to generate a pairing code.</p>
+    <p>Example response: <code>{"success":true,"code":"ABCD-EFGH"}</code></p>
+  </body>
+</html>`);
+});
+
+app.get("/code", async (request, response, next) => {
+  try {
+    const rawNumber = String(request.query.number || request.query.phone || "");
+    const normalizedPhone = rawNumber.replace(/[^0-9]/g, "");
+
+    if (!normalizedPhone || normalizedPhone.length < 6) {
+      response.status(400).json({ success: false, error: "Please provide a valid WhatsApp number" });
+      return;
+    }
+
+    const sessionId = typeof request.query.sessionId === "string" ? request.query.sessionId : "default";
+    const result = await sessions.pair(sessionId, normalizedPhone);
+
+    if (!result.pairingCode) {
+      throw new HttpError(502, "Failed to generate pairing code");
+    }
+
+    response.json({
+      success: true,
+      code: result.pairingCode,
+      number: normalizedPhone,
+      sessionId,
+      status: result.status,
+      healthStatus: result.healthStatus,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/code", async (request, response, next) => {
+  try {
+    const rawNumber = String(request.query.number || request.query.phone || "");
+    const normalizedPhone = rawNumber.replace(/[^0-9]/g, "");
+
+    if (!normalizedPhone || normalizedPhone.length < 6) {
+      response.status(400).json({ success: false, error: "Please provide a valid WhatsApp number" });
+      return;
+    }
+
+    const sessionId = typeof request.query.sessionId === "string" ? request.query.sessionId : "default";
+    const result = await sessions.pair(sessionId, normalizedPhone);
+
+    if (!result.pairingCode) {
+      throw new HttpError(502, "Failed to generate pairing code");
+    }
+
+    response.json({
+      success: true,
+      code: result.pairingCode,
+      number: normalizedPhone,
+      sessionId,
+      status: result.status,
+      healthStatus: result.healthStatus,
+    });
+  } catch (error) {
+    next(error);
+  }
 });
 
 app.get("/api/health", (_request, response) => {
