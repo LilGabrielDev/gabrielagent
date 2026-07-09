@@ -193,6 +193,26 @@ export class WhatsAppSessionManager {
     return Array.from(this.sessions.keys()).map((sessionId) => this.getStatus(sessionId));
   }
 
+  async createSession(sessionId: string) {
+    validateSessionId(sessionId);
+    const existing = this.sessions.get(sessionId);
+    if (existing) return this.getStatus(sessionId);
+
+    const now = new Date().toISOString();
+    const session: SessionRecord = {
+      id: sessionId,
+      status: "idle",
+      connected: false,
+      reconnectAttempts: 0,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    this.sessions.set(sessionId, session);
+    this.emitSessionEvent("loading", session);
+    return this.getStatus(sessionId);
+  }
+
   async logout(sessionId: string) {
     validateSessionId(sessionId);
     const session = this.sessions.get(sessionId);

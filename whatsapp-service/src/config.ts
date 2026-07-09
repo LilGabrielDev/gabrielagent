@@ -59,7 +59,7 @@ function validateEnvironment() {
   }
 
   if (!process.env.FRONTEND_URL && !process.env.NEXT_PUBLIC_APP_URL) {
-    process.env.FRONTEND_URL = "https://gabrielagent.onrender.com";
+    process.env.FRONTEND_URL = "https://gabrielagent.vercel.app";
   }
 }
 

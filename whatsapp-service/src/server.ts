@@ -1,7 +1,11 @@
+import compression from "compression";
 import cors from "cors";
 import express, { type NextFunction, type Request, type Response } from "express";
+import rateLimit from "express-rate-limit";
+import helmet from "helmet";
 import { WebSocket, WebSocketServer } from "ws";
 import pinoHttpImport from "pino-http";
+import QRCode from "qrcode";
 import { z } from "zod";
 import { getAutoUpdateStatus, handleGitHubWebhook } from "./auto-updater.js";
 import { config, isAllowedOrigin } from "./config.js";
@@ -21,10 +25,19 @@ const qrSchema = z.object({
 const app = express();
 const sessions = new WhatsAppSessionManager();
 const pinoHttp = pinoHttpImport.default || pinoHttpImport;
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 200,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 app.set("trust proxy", true);
 
 app.disable("x-powered-by");
+app.use(helmet());
+app.use(compression());
+app.use(limiter);
 app.post(
   "/api/github/webhook",
   express.raw({ type: "application/json", limit: "1mb" }),
@@ -113,6 +126,26 @@ app.get("/api/admin/update", (_request, response) => {
   response.json(getAutoUpdateStatus());
 });
 
+async function toQrDataUrl(value: string | null | undefined) {
+  if (!value) return null;
+  if (value.startsWith("data:image/")) return value;
+  try {
+    return await QRCode.toDataURL(value, { width: 256, margin: 1 });
+  } catch (error) {
+    logger.warn({ error }, "Failed to render QR payload as PNG");
+    return null;
+  }
+}
+
+app.post("/api/session/create", async (request, response, next) => {
+  try {
+    const body = z.object({ sessionId: z.string().min(1).default("default") }).parse(request.body || {});
+    response.json({ success: true, ...(await sessions.createSession(body.sessionId)) });
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.post("/api/whatsapp/pair", async (request, response, next) => {
   try {
     const body = pairSchema.parse(request.body);
@@ -133,6 +166,27 @@ app.post("/session/pair", async (request, response, next) => {
   }
 });
 
+app.post("/api/session/:sessionId/qr", async (request, response, next) => {
+  try {
+    const body = qrSchema.parse(request.body || {});
+    const sessionId = request.params.sessionId || body.sessionId;
+    const result = await sessions.startQr(sessionId);
+    const qr = await toQrDataUrl(result.qr);
+    response.json({
+      success: true,
+      sessionId: result.sessionId || sessionId,
+      pairingCode: result.pairingCode ?? null,
+      qr,
+      status: result.status,
+      healthStatus: result.healthStatus,
+      format: "png",
+      mimeType: "image/png",
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.post("/api/whatsapp/qr", async (request, response, next) => {
   try {
     const body = qrSchema.parse(request.body);
@@ -148,6 +202,96 @@ app.post("/session/qr", async (request, response, next) => {
     const body = qrSchema.parse(request.body);
     const result = await sessions.startQr(body.sessionId);
     response.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/session/:sessionId/pair", async (request, response, next) => {
+  try {
+    const body = pairSchema.parse(request.body || {});
+    const sessionId = request.params.sessionId || body.sessionId;
+    const result = await sessions.pair(sessionId, body.phoneNumber);
+    response.json({
+      success: true,
+      sessionId: result.sessionId || sessionId,
+      pairingCode: result.pairingCode ?? null,
+      qr: result.qr ?? null,
+      status: result.status,
+      healthStatus: result.healthStatus,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/session/:sessionId/status", (request, response, next) => {
+  try {
+    response.json(sessions.getStatus(request.params.sessionId));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/session/:sessionId/qr", async (request, response, next) => {
+  try {
+    const status = sessions.getStatus(request.params.sessionId);
+    const qr = await toQrDataUrl(status.qr);
+    response.json({ success: true, sessionId: request.params.sessionId, qr, format: "png", mimeType: "image/png", status });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/session/:sessionId/pair", (request, response, next) => {
+  try {
+    const status = sessions.getStatus(request.params.sessionId);
+    response.json({ success: true, sessionId: request.params.sessionId, pairingCode: status.pairingCode });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/session/:sessionId/events", (request, response) => {
+  response.setHeader("Content-Type", "text/event-stream");
+  response.setHeader("Cache-Control", "no-cache");
+  response.setHeader("Connection", "keep-alive");
+  response.setHeader("X-Accel-Buffering", "no");
+  response.flushHeaders?.();
+
+  const sessionId = request.params.sessionId;
+  const send = (payload: unknown) => {
+    response.write(`data: ${JSON.stringify(payload)}\n\n`);
+  };
+
+  const initial = sessions.getStatus(sessionId);
+  send({ event: "status", ...initial });
+
+  const unsubscribe = sessions.onEvent((event) => {
+    if (event.sessionId !== sessionId) return;
+    send({
+      event: event.event,
+      sessionId: event.sessionId,
+      status: event.status,
+      healthStatus: event.healthStatus,
+      connected: event.connected,
+      qr: event.qr,
+      pairingCode: event.pairingCode,
+      phoneNumber: event.phoneNumber,
+      error: event.error,
+      updatedAt: event.updatedAt,
+    });
+  });
+
+  request.on("close", () => {
+    unsubscribe();
+    response.end();
+  });
+});
+
+app.delete("/api/session/:sessionId", async (request, response, next) => {
+  try {
+    response.json(await sessions.logout(request.params.sessionId));
   } catch (error) {
     next(error);
   }

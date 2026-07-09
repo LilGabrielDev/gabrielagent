@@ -12,15 +12,20 @@
   },
   "dependencies": {
     "@whiskeysockets/baileys": "7.0.0-rc13",
+    "compression": "^1.8.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
+    "express-rate-limit": "^7.1.0",
+    "helmet": "^8.1.0",
     "pino": "^10.1.0",
     "pino-http": "^11.0.0",
+    "qrcode": "^1.5.0",
     "ws": "^8.18.3",
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@types/compression": "^1.8.0",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/node": "^20.19.25",
