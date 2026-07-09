@@ -1,6 +1,6 @@
 import cors from "cors";
 import express, { type NextFunction, type Request, type Response } from "express";
-import { WebSocketServer, type WebSocket } from "ws";
+import { WebSocket, WebSocketServer } from "ws";
 import pinoHttpImport from "pino-http";
 import { z } from "zod";
 import { getAutoUpdateStatus, handleGitHubWebhook } from "./auto-updater.js";

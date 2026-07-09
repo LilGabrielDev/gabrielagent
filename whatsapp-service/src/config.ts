@@ -34,12 +34,13 @@ export function isAllowedOrigin(origin?: string) {
 function validateEnvironment() {
   const missing: string[] = [];
   if (!process.env.NODE_ENV) missing.push("NODE_ENV");
-  if (process.env.NODE_ENV === "production" && !process.env.FRONTEND_URL) {
-    missing.push("FRONTEND_URL");
-  }
 
   if (missing.length > 0) {
     throw new Error(`Missing required WhatsApp service environment variables: ${missing.join(", ")}`);
+  }
+
+  if (process.env.NODE_ENV === "production" && !process.env.FRONTEND_URL && !process.env.NEXT_PUBLIC_APP_URL) {
+    console.warn("FRONTEND_URL not set; using default allowed origins for this deployment.");
   }
 }
 
