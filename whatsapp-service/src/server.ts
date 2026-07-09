@@ -15,7 +15,7 @@ import { WhatsAppSessionManager } from "./session-manager.js";
 
 const pairSchema = z.object({
   sessionId: z.string().min(1).default("default"),
-  phoneNumber: z.string().min(10),
+  phoneNumber: z.string().trim().optional(),
 });
 
 const qrSchema = z.object({
@@ -177,16 +177,16 @@ app.get("/", (_request, response) => {
         </div>
         <div class="panel">
           <form id="pairForm">
-            <label for="phone">WhatsApp number</label>
-            <input id="phone" name="phone" placeholder="254712345678" required />
+            <label for="phone">Phone number for pairing code (optional for QR)</label>
+            <input id="phone" name="phone" placeholder="254712345678" />
             <button type="submit">Get Code</button>
             <button type="button" class="secondary" id="refreshBtn">Refresh QR</button>
           </form>
           <div class="result" id="resultBox">
             <strong>No pairing code yet</strong>
-            <span>Enter a number and generate a code.</span>
+            <span>QR is generated automatically. Add a number if you want a pairing code.</span>
           </div>
-          <div class="hint">The QR is generated automatically as soon as this page opens.</div>
+          <div class="hint">The QR flow works without a number. The pairing code only needs a phone number.</div>
         </div>
       </div>
     </div>
@@ -240,7 +240,7 @@ app.get("/", (_request, response) => {
         event.preventDefault();
         const phone = document.getElementById('phone').value.trim().replace(/[^0-9]/g, '');
         if (!phone) {
-          resultBox.innerHTML = '<strong>Missing number</strong><span>Please enter a valid WhatsApp number.</span>';
+          resultBox.innerHTML = '<strong>Need a number for pairing</strong><span>QR works without a number. Add a phone number to request a pairing code.</span>';
           return;
         }
 
