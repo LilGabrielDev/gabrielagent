@@ -5,6 +5,7 @@ dotenv.config();
 
 const defaultOrigins = [
   "https://gabrielagent.vercel.app",
+  "https://gabrielagent.onrender.com",
   "http://localhost:3000",
   "http://localhost:3001",
   "http://127.0.0.1:3000",
@@ -58,7 +59,7 @@ function validateEnvironment() {
   }
 
   if (!process.env.FRONTEND_URL && !process.env.NEXT_PUBLIC_APP_URL) {
-    process.env.FRONTEND_URL = "https://gabrielagent.vercel.app";
+    process.env.FRONTEND_URL = "https://gabrielagent.onrender.com";
   }
 }
 
