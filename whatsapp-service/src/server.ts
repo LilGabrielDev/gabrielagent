@@ -388,7 +388,7 @@ app.post("/session/pair", async (request, response, next) => {
 app.post("/api/session/:sessionId/qr", async (request, response, next) => {
   try {
     const body = qrSchema.parse(request.body || {});
-    const sessionId = request.params.sessionId || body.sessionId;
+    const sessionId = request.params.sessionId ?? body.sessionId ?? "default";
     const result = await sessions.startQr(sessionId);
     const qr = await toQrDataUrl(result.qr);
     response.json({
@@ -429,7 +429,7 @@ app.post("/session/qr", async (request, response, next) => {
 app.post("/api/session/:sessionId/pair", async (request, response, next) => {
   try {
     const body = pairSchema.parse(request.body || {});
-    const sessionId = request.params.sessionId || body.sessionId;
+    const sessionId = request.params.sessionId ?? body.sessionId ?? "default";
     const result = await sessions.pair(sessionId, body.phoneNumber);
     response.json({
       success: true,
@@ -446,7 +446,8 @@ app.post("/api/session/:sessionId/pair", async (request, response, next) => {
 
 app.get("/api/session/:sessionId/status", (request, response, next) => {
   try {
-    response.json(sessions.getStatus(request.params.sessionId));
+    const sessionId = request.params.sessionId ?? "default";
+    response.json(sessions.getStatus(sessionId));
   } catch (error) {
     next(error);
   }
@@ -454,9 +455,10 @@ app.get("/api/session/:sessionId/status", (request, response, next) => {
 
 app.get("/api/session/:sessionId/qr", async (request, response, next) => {
   try {
-    const status = sessions.getStatus(request.params.sessionId);
+    const sessionId = request.params.sessionId ?? "default";
+    const status = sessions.getStatus(sessionId);
     const qr = await toQrDataUrl(status.qr);
-    response.json({ success: true, sessionId: request.params.sessionId, qr, format: "png", mimeType: "image/png", status });
+    response.json({ success: true, sessionId, qr, format: "png", mimeType: "image/png", status });
   } catch (error) {
     next(error);
   }
@@ -464,8 +466,9 @@ app.get("/api/session/:sessionId/qr", async (request, response, next) => {
 
 app.get("/api/session/:sessionId/pair", (request, response, next) => {
   try {
-    const status = sessions.getStatus(request.params.sessionId);
-    response.json({ success: true, sessionId: request.params.sessionId, pairingCode: status.pairingCode });
+    const sessionId = request.params.sessionId ?? "default";
+    const status = sessions.getStatus(sessionId);
+    response.json({ success: true, sessionId, pairingCode: status.pairingCode });
   } catch (error) {
     next(error);
   }
@@ -478,7 +481,7 @@ app.get("/api/session/:sessionId/events", (request, response) => {
   response.setHeader("X-Accel-Buffering", "no");
   response.flushHeaders?.();
 
-  const sessionId = request.params.sessionId;
+  const sessionId = request.params.sessionId ?? "default";
   const send = (payload: unknown) => {
     response.write(`data: ${JSON.stringify(payload)}\n\n`);
   };
@@ -510,7 +513,8 @@ app.get("/api/session/:sessionId/events", (request, response) => {
 
 app.delete("/api/session/:sessionId", async (request, response, next) => {
   try {
-    response.json(await sessions.logout(request.params.sessionId));
+    const sessionId = request.params.sessionId ?? "default";
+    response.json(await sessions.logout(sessionId));
   } catch (error) {
     next(error);
   }
@@ -518,7 +522,8 @@ app.delete("/api/session/:sessionId", async (request, response, next) => {
 
 app.get("/api/whatsapp/status/:sessionId", (request, response, next) => {
   try {
-    response.json(sessions.getStatus(request.params.sessionId));
+    const sessionId = request.params.sessionId ?? "default";
+    response.json(sessions.getStatus(sessionId));
   } catch (error) {
     next(error);
   }
@@ -526,7 +531,8 @@ app.get("/api/whatsapp/status/:sessionId", (request, response, next) => {
 
 app.delete("/api/whatsapp/logout/:sessionId", async (request, response, next) => {
   try {
-    response.json(await sessions.logout(request.params.sessionId));
+    const sessionId = request.params.sessionId ?? "default";
+    response.json(await sessions.logout(sessionId));
   } catch (error) {
     next(error);
   }
@@ -543,7 +549,8 @@ app.post("/session/logout", async (request, response, next) => {
 
 app.post("/api/whatsapp/reconnect/:sessionId", async (request, response, next) => {
   try {
-    response.json(await sessions.reconnect(request.params.sessionId));
+    const sessionId = request.params.sessionId ?? "default";
+    response.json(await sessions.reconnect(sessionId));
   } catch (error) {
     next(error);
   }
