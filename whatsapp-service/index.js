@@ -19,6 +19,10 @@ process.on("uncaughtException", (error) => {
   process.exit(1);
 });
 
+process.env.NODE_ENV ??= "production";
+process.env.PORT ??= "3001";
+process.env.HOST ??= "0.0.0.0";
+
 try {
   await import("./dist/server.js");
 } catch (error) {

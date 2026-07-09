@@ -226,7 +226,8 @@ async function start() {
   try {
     await sessions.bootstrap();
 
-    const server = app.listen(config.port, "0.0.0.0", () => {
+    const bindHost = process.env.HOST || "0.0.0.0";
+    const server = app.listen(config.port, bindHost, () => {
       logger.info(
         {
           port: config.port,
