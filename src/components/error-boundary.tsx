@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import { AlertTriangle, RefreshCw, Home, AlertCircle, Info } from "lucide-react";
 
 interface ErrorBoundaryProps {
@@ -67,7 +68,18 @@ function parseErrorMessage(message: string): {
 } {
   try {
     // Try to parse JSON error response
-    const parsed = JSON.parse(message);
+    const parsed = JSON.parse(message) as {
+      error?: {
+        code?: string;
+        message?: string;
+        details?: unknown;
+        statusCode?: number;
+      };
+      code?: string;
+      message?: string;
+      details?: unknown;
+      statusCode?: number;
+    };
     if (parsed.error) {
       return {
         code: parsed.error.code,
@@ -76,7 +88,12 @@ function parseErrorMessage(message: string): {
         statusCode: parsed.error.statusCode,
       };
     }
-    return parsed;
+    return {
+      code: parsed.code,
+      message: parsed.message,
+      details: parsed.details,
+      statusCode: parsed.statusCode,
+    };
   } catch {
     // If not JSON, return the raw message
     return { message };
@@ -93,18 +110,20 @@ function getErrorTitle(code?: string, statusCode?: number): string {
   return "Something went wrong";
 }
 
-function getErrorIcon(code?: string, statusCode?: number) {
-  if (statusCode === 401 || code === "UNAUTHORIZED") return AlertCircle;
-  if (statusCode === 403 || code === "FORBIDDEN") return AlertCircle;
-  if (statusCode === 404 || code === "NOT_FOUND") return Info;
-  return AlertTriangle;
+function ErrorIcon({
+  code,
+  statusCode,
+}: {
+  code?: string;
+  statusCode?: number;
+}) {
+  if (statusCode === 401 || code === "UNAUTHORIZED") return <AlertCircle className="h-7 w-7 text-gabriel-danger" />;
+  if (statusCode === 403 || code === "FORBIDDEN") return <AlertCircle className="h-7 w-7 text-gabriel-danger" />;
+  if (statusCode === 404 || code === "NOT_FOUND") return <Info className="h-7 w-7 text-gabriel-danger" />;
+  return <AlertTriangle className="h-7 w-7 text-gabriel-danger" />;
 }
 
-function ErrorFallback({
-  error,
-  errorDetails,
-  onRetry,
-}: {
+interface ErrorFallbackProps {
   error: Error | null;
   errorDetails?: {
     code?: string;
@@ -113,36 +132,39 @@ function ErrorFallback({
     statusCode?: number;
   };
   onRetry: () => void;
-}) {
-  const title = getErrorTitle(errorDetails?.code, errorDetails?.statusCode);
-  const Icon = getErrorIcon(errorDetails?.code, errorDetails?.statusCode);
-  const displayMessage =
-    errorDetails?.message ||
-    error?.message ||
-    "An unexpected error occurred. You can try again or return to the dashboard.";
+}
 
+function ErrorFallback({
+  error,
+  errorDetails,
+  onRetry,
+}: ErrorFallbackProps) {
+  const title = getErrorTitle(errorDetails?.code, errorDetails?.statusCode);
+  
+  const displayMessage: string =
+    typeof errorDetails?.message === "string"
+      ? errorDetails.message
+      : typeof error?.message === "string"
+        ? error.message
+        : "An unexpected error occurred. You can try again or return to the dashboard.";
   const isDevelopment = process.env.NODE_ENV === "development";
 
   return (
     <div className="flex min-h-[400px] items-center justify-center p-6">
       <div className="w-full max-w-md">
         <div className="rounded-lg border border-gabriel-border bg-gabriel-surface p-6">
-          {/* Error Icon */}
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-red-50">
-            <Icon className="h-7 w-7 text-gabriel-danger" />
+            <ErrorIcon code={errorDetails?.code} statusCode={errorDetails?.statusCode} />
           </div>
 
-          {/* Error Title */}
           <h2 className="text-center text-lg font-semibold text-gabriel-text">
             {title}
           </h2>
 
-          {/* Error Message */}
           <p className="mt-3 text-center text-sm text-gabriel-text-light">
             {displayMessage}
           </p>
 
-          {/* Error Code (if available) */}
           {errorDetails?.code && (
             <div className="mt-3 rounded bg-gabriel-bg px-3 py-2">
               <p className="text-xs font-mono text-gabriel-text-light">
@@ -151,27 +173,25 @@ function ErrorFallback({
             </div>
           )}
 
-          {/* Error Details (development only) */}
-          {isDevelopment && errorDetails?.details && (
+          {isDevelopment && Boolean(errorDetails?.details) && (
             <details className="mt-3">
               <summary className="cursor-pointer text-xs font-semibold text-gabriel-text-light hover:text-gabriel-text">
                 Details (Dev)
               </summary>
               <pre className="mt-2 overflow-auto rounded bg-gabriel-bg p-2 text-xs text-gabriel-text-light">
-                {JSON.stringify(errorDetails.details, null, 2)}
+                {JSON.stringify(errorDetails?.details, null, 2)}
               </pre>
             </details>
           )}
 
-          {/* Action Buttons */}
           <div className="mt-6 flex items-center justify-center gap-3">
-            <a
+            <Link
               href="/"
               className="inline-flex items-center gap-2 rounded-lg border border-gabriel-border bg-gabriel-surface px-4 py-2 text-sm font-medium text-gabriel-text hover:bg-gabriel-bg transition-colors"
             >
               <Home className="h-4 w-4" />
               Dashboard
-            </a>
+            </Link>
             <button
               onClick={onRetry}
               className="inline-flex items-center gap-2 rounded-lg bg-gabriel-primary px-4 py-2 text-sm font-medium text-white hover:bg-gabriel-primary-dark transition-colors"

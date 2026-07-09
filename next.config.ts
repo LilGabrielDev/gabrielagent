@@ -3,14 +3,17 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
+  turbopack: {},
   webpack: (config, { isServer }) => {
-    // Exclude whatsapp-service from the build
-    config.externals = [
-      ...(config.externals || []),
-      { "@whiskeysockets/baileys": "@whiskeysockets/baileys" },
-      { pino: "pino" },
-      { "pino-http": "pino-http" },
-    ];
+    if (isServer) {
+      config.externals = [
+        ...(config.externals || []),
+        "@whiskeysockets/baileys",
+        "pino",
+        "pino-http",
+        "@prisma/adapter-pg"
+      ];
+    }
     return config;
   },
 };

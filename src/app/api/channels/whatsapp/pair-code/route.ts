@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic";
 
 function getServiceBaseUrl(): string | null {
   const url =
+    process.env.NEXT_PUBLIC_BACKEND_URL ||
     process.env.WHATSAPP_SERVICE_URL ||
     process.env.WHATSAPP_BACKEND_URL ||
     process.env.WHATSAPP_PAIRING_SERVICE_URL;
@@ -18,9 +19,10 @@ function getServiceHeaders(): HeadersInit {
     "Content-Type": "application/json",
   };
 
-  if (process.env.WHATSAPP_SERVICE_API_KEY) {
-    headers.Authorization = `Bearer ${process.env.WHATSAPP_SERVICE_API_KEY}`;
-    headers["x-api-key"] = process.env.WHATSAPP_SERVICE_API_KEY;
+  const apiKey = process.env.WHATSAPP_SERVICE_API_KEY;
+  if (apiKey) {
+    headers.Authorization = `Bearer ${apiKey}`;
+    headers["x-api-key"] = apiKey;
   }
 
   return headers;
@@ -31,7 +33,7 @@ export async function GET(request: Request) {
   if (!baseUrl) {
     return NextResponse.json(
       {
-        error: "WHATSAPP_SERVICE_URL is not configured",
+        error: "NEXT_PUBLIC_BACKEND_URL is not configured",
         code: "SERVICE_NOT_CONFIGURED",
       },
       { status: 503 }

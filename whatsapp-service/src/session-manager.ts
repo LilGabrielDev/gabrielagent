@@ -5,6 +5,7 @@ import makeWASocket, {
   useMultiFileAuthState,
   type WASocket,
 } from "@whiskeysockets/baileys";
+import { EventEmitter } from "node:events";
 import { HttpError } from "./http-error.js";
 import { logger } from "./logger.js";
 import { createSessionStore, validateSessionId } from "./session-store.js";
@@ -48,10 +49,45 @@ export interface SessionStatusResponse {
   updatedAt: string;
 }
 
+export type WhatsAppSessionEventName =
+  | "loading"
+  | "qr"
+  | "pairing_code"
+  | "authenticated"
+  | "connected"
+  | "ready"
+  | "disconnected"
+  | "error";
+
+export interface WhatsAppSessionEvent {
+  event: WhatsAppSessionEventName;
+  sessionId: string;
+  status: SessionStatus;
+  healthStatus: HealthConnectionStatus;
+  connected: boolean;
+  qr: string | null;
+  pairingCode: string | null;
+  phoneNumber: string | null;
+  error: string | null;
+  updatedAt: string;
+}
+
+interface DisconnectErrorWithStatus {
+  output?: {
+    statusCode?: number;
+  };
+}
+
 export class WhatsAppSessionManager {
   private sessions = new Map<string, SessionRecord>();
   private store = createSessionStore();
   private versionPromise = fetchLatestBaileysVersion();
+  private events = new EventEmitter();
+
+  onEvent(listener: (event: WhatsAppSessionEvent) => void) {
+    this.events.on("session", listener);
+    return () => this.events.off("session", listener);
+  }
 
   async bootstrap() {
     await this.store.initialize();
@@ -91,6 +127,7 @@ export class WhatsAppSessionManager {
     session.pairingCode = this.formatPairingCode(code);
     session.status = "waiting";
     session.updatedAt = new Date().toISOString();
+    this.emitSessionEvent("pairing_code", session);
 
     return this.toPairResponse(session);
   }
@@ -205,6 +242,7 @@ export class WhatsAppSessionManager {
     session.phoneNumber = phoneNumber || session.phoneNumber;
     session.updatedAt = now;
     this.sessions.set(sessionId, session);
+    this.emitSessionEvent("loading", session);
 
     const authDirectory = this.store.getSessionPath(sessionId);
 
@@ -240,8 +278,12 @@ export class WhatsAppSessionManager {
     session.socket = socket;
 
     socket.ev.on("creds.update", saveCreds);
+    socket.ev.on("creds.update", () => {
+      this.emitSessionEvent("authenticated", session);
+    });
     socket.ev.on("connection.update", (update) => {
-      const statusCode = (update.lastDisconnect?.error as any)?.output?.statusCode;
+      const disconnectError = update.lastDisconnect?.error as DisconnectErrorWithStatus | undefined;
+      const statusCode = disconnectError?.output?.statusCode;
       session.updatedAt = new Date().toISOString();
 
       if (update.connection === "open") {
@@ -252,13 +294,21 @@ export class WhatsAppSessionManager {
         session.lastError = undefined;
         session.reconnectAttempts = 0;
         logger.info({ sessionId }, "WhatsApp session connected");
+        this.emitSessionEvent("connected", session);
+        this.emitSessionEvent("ready", session);
         return;
       }
 
       if (update.connection === "connecting") {
         session.status = session.status === "waiting" ? "waiting" : "connecting";
         session.connected = false;
-        if (update.qr) session.qr = update.qr;
+        if (update.qr) {
+          session.qr = update.qr;
+          session.status = "waiting";
+          this.emitSessionEvent("qr", session);
+        } else {
+          this.emitSessionEvent("loading", session);
+        }
         return;
       }
 
@@ -272,6 +322,7 @@ export class WhatsAppSessionManager {
           session.pairingCode = undefined;
           session.qr = undefined;
           logger.warn({ sessionId }, "WhatsApp session logged out");
+          this.emitSessionEvent("disconnected", session);
           this.store.remove(sessionId).catch((error) => {
             logger.warn({ error, sessionId }, "Failed to remove logged-out WhatsApp session");
           });
@@ -279,6 +330,7 @@ export class WhatsAppSessionManager {
         }
 
         session.status = "reconnecting";
+        this.emitSessionEvent("disconnected", session);
         this.scheduleReconnect(session);
       }
     });
@@ -297,6 +349,7 @@ export class WhatsAppSessionManager {
         session.lastError = error instanceof Error ? error.message : String(error);
         session.updatedAt = new Date().toISOString();
         logger.error({ error, sessionId: session.id }, "WhatsApp reconnect failed");
+        this.emitSessionEvent("error", session);
         this.scheduleReconnect(session);
       });
     }, delay);
@@ -332,6 +385,21 @@ export class WhatsAppSessionManager {
     logger.warn({ error, sessionId }, "Quarantining corrupted WhatsApp session");
     this.sessions.delete(sessionId);
     await this.store.quarantine(sessionId);
+  }
+
+  private emitSessionEvent(event: WhatsAppSessionEventName, session: SessionRecord) {
+    this.events.emit("session", {
+      event,
+      sessionId: session.id,
+      status: session.status,
+      healthStatus: this.toHealthStatus(session),
+      connected: session.connected,
+      qr: session.qr || null,
+      pairingCode: session.pairingCode || null,
+      phoneNumber: session.phoneNumber || null,
+      error: session.lastError || null,
+      updatedAt: session.updatedAt,
+    } satisfies WhatsAppSessionEvent);
   }
 
   private async withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string) {

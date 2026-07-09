@@ -55,6 +55,7 @@ let lastStatus: WhatsAppChannelStatus = {
 
 function getServiceBaseUrl(): string | null {
   const url =
+    process.env.NEXT_PUBLIC_BACKEND_URL ||
     process.env.WHATSAPP_SERVICE_URL ||
     process.env.WHATSAPP_BACKEND_URL ||
     process.env.WHATSAPP_PAIRING_SERVICE_URL;
@@ -68,9 +69,10 @@ function getServiceHeaders(): HeadersInit {
     "Content-Type": "application/json",
   };
 
-  if (process.env.WHATSAPP_SERVICE_API_KEY) {
-    headers.Authorization = `Bearer ${process.env.WHATSAPP_SERVICE_API_KEY}`;
-    headers["x-api-key"] = process.env.WHATSAPP_SERVICE_API_KEY;
+  const apiKey = process.env.WHATSAPP_SERVICE_API_KEY;
+  if (apiKey) {
+    headers.Authorization = `Bearer ${apiKey}`;
+    headers["x-api-key"] = apiKey;
   }
 
   return headers;
@@ -127,7 +129,7 @@ function assertServiceConfigured(): string {
   const baseUrl = getServiceBaseUrl();
   if (!baseUrl) {
     throw new Error(
-      "WHATSAPP_SERVICE_URL is not configured. Deploy whatsapp-service on Render, Railway, or Katabump and set the URL."
+      "NEXT_PUBLIC_BACKEND_URL is not configured. Deploy whatsapp-service on Render and set the backend URL."
     );
   }
   return baseUrl;

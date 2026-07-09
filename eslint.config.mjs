@@ -9,9 +9,16 @@ const eslintConfig = defineConfig([
     ".next/**",
     "out/**",
     "build/**",
+    "whatsapp-service/dist/**",
     "next-env.d.ts",
     "src/generated/**",
   ]),
+  {
+    files: ["whatsapp-service/src/**/*.ts"],
+    rules: {
+      "react-hooks/rules-of-hooks": "off",
+    },
+  },
   {
     rules: {
       "react-hooks/set-state-in-effect": "off",

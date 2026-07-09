@@ -20,6 +20,9 @@ import {
   EyeOff,
 } from "lucide-react";
 import { useState, useEffect, useCallback, useRef } from "react";
+import QRCode from "qrcode";
+import { backendRequest } from "@/lib/api";
+import { connectBackendSocket, type BackendSocketEvent } from "@/lib/socket";
 import { cn } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
@@ -35,6 +38,22 @@ interface ChannelData {
 }
 
 type WhatsAppMode = "web" | "api" | "pairing";
+
+interface WhatsAppBackendResponse {
+  sessionId?: string;
+  status?: string;
+  connected?: boolean;
+  qr?: string | null;
+  pairingCode?: string | null;
+  phoneNumber?: string | null;
+  error?: string | null;
+}
+
+async function toQrDataUrl(qr?: string | null): Promise<string | null> {
+  if (!qr) return null;
+  if (qr.startsWith("data:image/")) return qr;
+  return QRCode.toDataURL(qr, { width: 256, margin: 1 });
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -166,83 +185,106 @@ function WhatsAppCard({
   const [connectionCode, setConnectionCode] = useState<string | null>(null);
   const [connectionMessage, setConnectionMessage] = useState<string | null>(null);
   const [connecting, setConnecting] = useState(false);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const socketRef = useRef<ReturnType<typeof connectBackendSocket> | null>(null);
   const isConnected = channel.status === "connected";
 
-  // Poll WhatsApp status while connecting to get QR code updates
-  useEffect(() => {
-    return () => {
-      if (pollRef.current) clearInterval(pollRef.current);
-    };
-  }, []);
-
-  const applyWhatsAppStatus = (status: {
+  const applyWhatsAppStatus = useCallback(async (status: {
     status?: string;
     qr?: string | null;
     pairingCode?: string | null;
     message?: string | null;
+    event?: BackendSocketEvent["event"];
+    connected?: boolean;
+    error?: string | null;
   }) => {
-    const nextCode = status.qr || status.pairingCode || null;
+    const qrDataUrl = await toQrDataUrl(status.qr);
+    const nextCode = qrDataUrl || status.pairingCode || null;
     setConnectionCode(nextCode);
-    setConnectionMessage(status.message || null);
+    setConnectionMessage(status.message || status.error || null);
 
-    if (status.status === "qr_ready" && status.qr) {
+    if (status.event === "qr" || (status.status === "waiting" && status.qr)) {
       setConnecting(true);
       return;
     }
 
-    if (mode === "pairing" && status.status === "pairing_ready" && status.pairingCode) {
+    if (mode === "pairing" && (status.event === "pairing_code" || status.pairingCode)) {
       setConnecting(true);
       return;
     }
 
-    if (status.status === "error") {
-      if (pollRef.current) clearInterval(pollRef.current);
+    if (status.event === "error" || status.status === "error") {
       setConnecting(false);
       return;
     }
 
-    if (status.status === "connected") {
-      if (pollRef.current) clearInterval(pollRef.current);
+    if (status.connected || status.event === "connected" || status.event === "ready") {
       setConnecting(false);
-      onAction("whatsapp", "connect");
+      onAction("whatsapp", "sync");
     }
-  };
+  }, [mode, onAction]);
+
+  useEffect(() => {
+    try {
+      socketRef.current = connectBackendSocket((event) => {
+        void applyWhatsAppStatus(event);
+      });
+    } catch (error) {
+      setConnectionMessage(error instanceof Error ? error.message : "Realtime is not configured");
+    }
+
+    return () => {
+      socketRef.current?.close();
+    };
+  }, [applyWhatsAppStatus]);
 
   const handleConnect = async () => {
     setConnecting(true);
     setConnectionCode(null);
     setConnectionMessage(null);
     try {
-      const res = await fetch("/api/channels/whatsapp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "connect",
-          mode,
-          phoneNumber: mode === "pairing" ? pairingPhoneNumber : phoneNumber,
-          apiKey: mode === "api" ? apiKey : undefined,
-        }),
-      });
-      const data = await res.json().catch(() => null);
-      if (!res.ok) {
-        setConnectionMessage(data?.error || "Failed to connect WhatsApp");
+      let data: WhatsAppBackendResponse;
+
+      if (mode === "api") {
+        const res = await fetch("/api/channels/whatsapp", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "connect",
+            mode,
+            phoneNumber,
+            apiKey,
+          }),
+        });
+        const payload = await res.json().catch(() => null);
+        if (!res.ok) {
+          throw new Error(payload?.error || "Failed to save WhatsApp API credentials");
+        }
         setConnecting(false);
         return;
       }
-      applyWhatsAppStatus(data);
-      // Start polling for QR code / status updates
-      if (pollRef.current) clearInterval(pollRef.current);
-      pollRef.current = setInterval(async () => {
-        try {
-          const statusRes = await fetch("/api/channels/whatsapp");
-          if (statusRes.ok) {
-            const status = await statusRes.json();
-            applyWhatsAppStatus(status);
-          }
-        } catch { /* ignore polling errors */ }
-      }, 3000);
-    } catch {
+
+      if (mode === "web") {
+        data = await backendRequest<WhatsAppBackendResponse>("/session/qr", {
+          method: "POST",
+          body: JSON.stringify({ sessionId: "default" }),
+        });
+      } else {
+        const normalizedPhoneNumber = pairingPhoneNumber.replace(/[^0-9]/g, "");
+        if (normalizedPhoneNumber.length < 10) {
+          throw new Error("A valid phone number is required for pairing mode");
+        }
+        data = await backendRequest<WhatsAppBackendResponse>("/session/pair", {
+          method: "POST",
+          body: JSON.stringify({
+            sessionId: "default",
+            phoneNumber: normalizedPhoneNumber,
+          }),
+        });
+      }
+
+      await applyWhatsAppStatus(data);
+    } catch (error) {
+      setConnectionMessage(error instanceof Error ? error.message : "Failed to connect WhatsApp");
       setConnecting(false);
     }
   };
@@ -978,7 +1020,7 @@ export default function ChannelsPage() {
     }
   };
 
-  const handleAction = async (type: string, action: string) => {
+  const handleAction = useCallback(async (type: string, action: string) => {
     try {
       const res = await fetch(`/api/channels/${type}`, {
         method: "POST",
@@ -1002,7 +1044,7 @@ export default function ChannelsPage() {
         "error"
       );
     }
-  };
+  }, [showToast]);
 
   const getChannel = (type: string): ChannelData =>
     channels.find((ch) => ch.type === type) || {

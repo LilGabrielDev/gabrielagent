@@ -1,9 +1,10 @@
 import cors from "cors";
 import express, { type NextFunction, type Request, type Response } from "express";
+import { WebSocketServer, type WebSocket } from "ws";
 import pinoHttpImport from "pino-http";
 import { z } from "zod";
 import { getAutoUpdateStatus, handleGitHubWebhook } from "./auto-updater.js";
-import { config } from "./config.js";
+import { config, isAllowedOrigin } from "./config.js";
 import { HttpError } from "./http-error.js";
 import { logger } from "./logger.js";
 import { WhatsAppSessionManager } from "./session-manager.js";
@@ -37,11 +38,27 @@ app.post(
   }
 );
 app.use(express.json({ limit: "64kb" }));
-app.use(cors({ origin: config.corsOrigins, credentials: true }));
+app.use(
+  cors({
+    origin(origin, callback) {
+      if (isAllowedOrigin(origin)) {
+        callback(null, true);
+        return;
+      }
+      callback(new Error(`Origin is not allowed by CORS: ${origin}`));
+    },
+    credentials: true,
+  })
+);
 app.use(pinoHttp({ logger }));
 
 app.use((request, _response, next) => {
-  if (!config.apiKey || request.path === "/api/health" || request.path === "/health") {
+  if (
+    !config.apiKey ||
+    request.path === "/api/health" ||
+    request.path === "/health" ||
+    request.path === "/status"
+  ) {
     next();
     return;
   }
@@ -75,11 +92,19 @@ function getHealthPayload() {
 }
 
 app.get("/health", (_request, response) => {
-  response.json(getHealthPayload());
+  response.json({ status: "ok" });
 });
 
 app.get("/api/health", (_request, response) => {
   response.json(getHealthPayload());
+});
+
+app.get("/status", (_request, response) => {
+  response.json(getHealthPayload());
+});
+
+app.get("/session/state", (_request, response) => {
+  response.json(sessions.getStatus("default"));
 });
 
 app.get("/api/admin/update", (_request, response) => {
@@ -96,7 +121,27 @@ app.post("/api/whatsapp/pair", async (request, response, next) => {
   }
 });
 
+app.post("/session/pair", async (request, response, next) => {
+  try {
+    const body = pairSchema.parse(request.body);
+    const result = await sessions.pair(body.sessionId, body.phoneNumber);
+    response.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.post("/api/whatsapp/qr", async (request, response, next) => {
+  try {
+    const body = qrSchema.parse(request.body);
+    const result = await sessions.startQr(body.sessionId);
+    response.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/session/qr", async (request, response, next) => {
   try {
     const body = qrSchema.parse(request.body);
     const result = await sessions.startQr(body.sessionId);
@@ -122,6 +167,15 @@ app.delete("/api/whatsapp/logout/:sessionId", async (request, response, next) =>
   }
 });
 
+app.post("/session/logout", async (request, response, next) => {
+  try {
+    const body = qrSchema.parse(request.body || {});
+    response.json(await sessions.logout(body.sessionId));
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.post("/api/whatsapp/reconnect/:sessionId", async (request, response, next) => {
   try {
     response.json(await sessions.reconnect(request.params.sessionId));
@@ -130,7 +184,18 @@ app.post("/api/whatsapp/reconnect/:sessionId", async (request, response, next) =
   }
 });
 
+app.post("/session/restart", async (request, response, next) => {
+  try {
+    const body = qrSchema.parse(request.body || {});
+    response.json(await sessions.reconnect(body.sessionId));
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.use((error: unknown, _request: Request, response: Response, _next: NextFunction) => {
+  void _next;
+
   if (error instanceof z.ZodError) {
     response.status(400).json({
       success: false,
@@ -171,8 +236,41 @@ const server = app.listen(config.port, () => {
   );
 });
 
+const sockets = new Set<WebSocket>();
+const websocketServer = new WebSocketServer({ server, path: "/ws" });
+
+function send(socket: WebSocket, payload: unknown) {
+  if (socket.readyState === WebSocket.OPEN) {
+    socket.send(JSON.stringify(payload));
+  }
+}
+
+websocketServer.on("connection", (socket, request) => {
+  const origin = request.headers.origin;
+  if (!isAllowedOrigin(origin)) {
+    socket.close(1008, "Origin is not allowed");
+    return;
+  }
+
+  sockets.add(socket);
+  send(socket, {
+    event: "ready",
+    sessionId: "default",
+    status: sessions.getStatus("default"),
+  });
+
+  socket.on("close", () => sockets.delete(socket));
+});
+
+sessions.onEvent((event) => {
+  for (const socket of sockets) {
+    send(socket, event);
+  }
+});
+
 function shutdown(signal: string) {
   logger.info({ signal }, "Shutting down WhatsApp service");
+  websocketServer.close();
   server.close(() => process.exit(0));
 }
 

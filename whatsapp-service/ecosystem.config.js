@@ -1,4 +1,4 @@
-export default {
+const ecosystemConfig = {
   apps: [
     {
       name: "gabriel-whatsapp-service",
@@ -15,3 +15,5 @@ export default {
     },
   ],
 };
+
+export default ecosystemConfig;

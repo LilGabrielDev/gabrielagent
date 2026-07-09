@@ -21,7 +21,6 @@ import {
   Settings,
   FlaskConical,
   HelpCircle,
-  ArrowRight,
   Megaphone,
   GitBranch,
 } from "lucide-react";

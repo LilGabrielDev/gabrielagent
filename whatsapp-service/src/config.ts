@@ -11,12 +11,36 @@ const defaultOrigins = [
   "http://127.0.0.1:3001",
 ];
 
+function getFrontendOrigins() {
+  return [process.env.FRONTEND_URL, process.env.NEXT_PUBLIC_APP_URL]
+    .filter((origin): origin is string => Boolean(origin))
+    .map((origin) => origin.replace(/\/+$/, ""));
+}
+
 function parseOrigins(value?: string): string[] {
-  if (!value || value === "*") return defaultOrigins;
-  return value
+  const configured = !value || value === "*" ? defaultOrigins : value
     .split(",")
     .map((origin) => origin.trim())
     .filter(Boolean);
+  return Array.from(new Set([...configured, ...getFrontendOrigins()]));
+}
+
+export function isAllowedOrigin(origin?: string) {
+  if (!origin) return true;
+  if (config.corsOrigins.includes(origin)) return true;
+  return /^https:\/\/[a-z0-9-]+\.vercel\.app$/i.test(origin);
+}
+
+function validateEnvironment() {
+  const missing: string[] = [];
+  if (!process.env.NODE_ENV) missing.push("NODE_ENV");
+  if (process.env.NODE_ENV === "production" && !process.env.FRONTEND_URL) {
+    missing.push("FRONTEND_URL");
+  }
+
+  if (missing.length > 0) {
+    throw new Error(`Missing required WhatsApp service environment variables: ${missing.join(", ")}`);
+  }
 }
 
 function detectPublicUrl() {
@@ -49,3 +73,5 @@ export const config = {
   publicUrl: detectPublicUrl(),
   logLevel: process.env.LOG_LEVEL || "info",
 };
+
+validateEnvironment();

@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: gabriel-whatsapp-service
+    runtime: docker
+    rootDir: whatsapp-service
+    plan: starter
+    autoDeploy: true
+    dockerfilePath: Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    disk:
+      name: whatsapp-sessions
+      mountPath: /app/sessions
+      sizeGB: 1
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SESSION_STORE
+        value: file
+      - key: SESSION_PATH
+        value: /app/sessions
+      - key: LOG_LEVEL
+        value: info
+      - key: FRONTEND_URL
+        sync: false

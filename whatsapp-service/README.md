@@ -1,6 +1,6 @@
 # Gabriel WhatsApp Service
 
-Standalone WhatsApp pairing and session service for Gabriel. Deploy this service on Render, Railway, Katabump, Fly.io, a VPS, Docker, or PM2, then point the Vercel app at it with `WHATSAPP_SERVICE_URL` when the frontend is not already configured.
+Standalone WhatsApp pairing and session service for Gabriel. Deploy this service on Render, Railway, Katabump, Fly.io, a VPS, Docker, or PM2, then point the Vercel app at it with `NEXT_PUBLIC_BACKEND_URL`.
 
 ## API
 
@@ -12,15 +12,26 @@ Standalone WhatsApp pairing and session service for Gabriel. Deploy this service
 - `POST /api/whatsapp/reconnect/:sessionId`
 - `GET /health`
 - `GET /api/health`
+- `GET /status`
+- `GET /session/state`
+- `POST /session/qr`
+- `POST /session/pair`
+- `POST /session/logout`
+- `POST /session/restart`
+- `WS /ws`
+
+Realtime events: `loading`, `qr`, `pairing_code`, `authenticated`, `connected`, `ready`, `disconnected`, and `error`.
 
 If `API_KEY` is set, send either `Authorization: Bearer <API_KEY>` or `x-api-key: <API_KEY>`. Leave it unset for zero-config frontend proxy access.
 
 ## Environment
 
-No environment variables are required. Optional overrides:
+Local development can run with defaults. Production must set `NODE_ENV=production` and `FRONTEND_URL`; Render supplies `PORT`.
 
 ```env
 PORT=3000
+NODE_ENV=development
+FRONTEND_URL=https://gabrielagent.vercel.app
 API_KEY=
 ALLOWED_ORIGINS=https://gabrielagent.vercel.app,http://localhost:3000,http://localhost:3001
 SESSION_STORE=file
@@ -55,7 +66,9 @@ The compose file mounts `whatsapp_sessions` at `/app/sessions`.
 
 ## Render
 
-Create a Web Service with root directory `whatsapp-service`, build command `npm ci && npm run build`, and start command `npm start`. Add a persistent disk mounted at `/app/sessions` and set only `SESSION_PATH=/app/sessions` if you want sessions to survive redeploys; the service otherwise boots with `PORT`, CORS, and auth defaults.
+Use the root `render.yaml` Blueprint or create a Web Service with root directory `whatsapp-service`, build command `npm ci && npm run build`, start command `npm start`, and health check path `/health`. Add a persistent disk mounted at `/app/sessions` and set `SESSION_PATH=/app/sessions` so LocalAuth sessions survive Render restarts. Set `FRONTEND_URL` to the production Vercel URL.
+
+Render's GitHub integration should have auto deploy enabled for the default branch. The included `render.yaml` sets `autoDeploy: true`, so future pushes redeploy only the backend service.
 
 ## Railway
 
@@ -106,8 +119,7 @@ Do not delete the `sessions` directory between restarts.
 Set these variables in the existing Vercel app:
 
 ```env
-WHATSAPP_SERVICE_URL=https://your-whatsapp-service.example.com
-WHATSAPP_SERVICE_API_KEY=the-same-api-key
+NEXT_PUBLIC_BACKEND_URL=https://your-whatsapp-service.onrender.com
 ```
 
-The existing `/api/channels/whatsapp` and `/api/channels/whatsapp/pair-code` routes proxy to this service, so the dashboard pairing UI can stay where it is.
+The dashboard connects to `/session/qr`, `/session/pair`, and `/ws` through `NEXT_PUBLIC_BACKEND_URL`. The existing `/api/channels/whatsapp` and `/api/channels/whatsapp/pair-code` routes remain as server-side compatibility proxies.
