@@ -119,13 +119,152 @@ app.get("/", (_request, response) => {
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Knight Bot Pair Code</title>
-    <style>body{font-family:Arial,sans-serif;max-width:720px;margin:2rem auto;padding:1rem;line-height:1.5}code{background:#f5f5f5;padding:0.2rem 0.4rem;border-radius:4px}</style>
+    <title>Gabriel WhatsApp Pairing</title>
+    <style>
+      :root { color-scheme: dark; }
+      body {
+        margin: 0;
+        font-family: Inter, Arial, sans-serif;
+        background: radial-gradient(circle at top, #13203f 0%, #060816 55%, #03050b 100%);
+        color: #f5f7ff;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+      }
+      .card {
+        width: min(960px, 100%);
+        background: rgba(8, 13, 30, 0.92);
+        border: 1px solid rgba(147, 197, 253, 0.2);
+        border-radius: 24px;
+        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.35);
+        overflow: hidden;
+      }
+      .hero {
+        padding: 28px 28px 16px;
+        border-bottom: 1px solid rgba(255,255,255,0.08);
+      }
+      .hero h1 { margin: 0; font-size: 1.8rem; }
+      .hero p { margin: 8px 0 0; color: #a8b0c6; line-height: 1.5; }
+      .content { display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 24px; padding: 24px 28px 28px; }
+      .panel { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 18px; padding: 20px; }
+      .qr-box { min-height: 320px; display: grid; place-items: center; }
+      .qr-box img { width: min(280px, 100%); border-radius: 16px; background: white; padding: 10px; }
+      .status { margin-top: 10px; color: #8ac4ff; font-size: 0.95rem; }
+      form { display: grid; gap: 12px; }
+      label { font-size: 0.95rem; color: #cbd5e1; }
+      input { width: 100%; padding: 12px 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.16); background: rgba(255,255,255,0.06); color: white; font-size: 1rem; box-sizing: border-box; }
+      button { border: none; border-radius: 999px; padding: 12px 16px; font-weight: 700; cursor: pointer; background: linear-gradient(90deg, #38bdf8, #6366f1); color: white; }
+      button.secondary { background: rgba(255,255,255,0.12); color: #f8fafc; }
+      .result { margin-top: 16px; padding: 14px; border-radius: 14px; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16,185,129,0.28); min-height: 62px; }
+      .result strong { display: block; font-size: 1.1rem; margin-bottom: 4px; }
+      .hint { font-size: 0.92rem; color: #9fb0c8; margin-top: 6px; }
+      @media (max-width: 760px) { .content { grid-template-columns: 1fr; } }
+    </style>
   </head>
   <body>
-    <h1>Knight Bot Pair Code</h1>
-    <p>Use <code>/code?number=254712345678</code> to generate a pairing code.</p>
-    <p>Example response: <code>{"success":true,"code":"ABCD-EFGH"}</code></p>
+    <div class="card">
+      <div class="hero">
+        <h1>Gabriel WhatsApp Pairing</h1>
+        <p>Open this page on your Render service to generate a live QR code automatically. Enter the WhatsApp number, click Get Code, and the pairing code will appear instantly.</p>
+      </div>
+      <div class="content">
+        <div class="panel">
+          <div class="qr-box" id="qrBox">
+            <img id="qrImage" alt="WhatsApp QR code" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==" />
+          </div>
+          <div class="status" id="statusText">Preparing QR session…</div>
+        </div>
+        <div class="panel">
+          <form id="pairForm">
+            <label for="phone">WhatsApp number</label>
+            <input id="phone" name="phone" placeholder="254712345678" required />
+            <button type="submit">Get Code</button>
+            <button type="button" class="secondary" id="refreshBtn">Refresh QR</button>
+          </form>
+          <div class="result" id="resultBox">
+            <strong>No pairing code yet</strong>
+            <span>Enter a number and generate a code.</span>
+          </div>
+          <div class="hint">The QR is generated automatically as soon as this page opens.</div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const sessionId = 'default';
+      const qrImage = document.getElementById('qrImage');
+      const statusText = document.getElementById('statusText');
+      const resultBox = document.getElementById('resultBox');
+      const pairForm = document.getElementById('pairForm');
+      const refreshBtn = document.getElementById('refreshBtn');
+
+      async function setStatus(message) {
+        statusText.textContent = message;
+      }
+
+      async function createSession() {
+        try {
+          await fetch('/api/session/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sessionId })
+          });
+          await loadQr();
+        } catch (error) {
+          setStatus('Unable to start a WhatsApp session right now.');
+        }
+      }
+
+      async function loadQr() {
+        try {
+          setStatus('Generating QR…');
+          const response = await fetch('/api/session/' + encodeURIComponent(sessionId) + '/qr', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sessionId })
+          });
+          const payload = await response.json();
+          if (payload && payload.qr) {
+            qrImage.src = payload.qr;
+            setStatus('Scan the QR with WhatsApp Linked Devices.');
+          } else {
+            setStatus('QR is not ready yet.');
+          }
+        } catch (error) {
+          setStatus('QR generation failed.');
+        }
+      }
+
+      pairForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const phone = document.getElementById('phone').value.trim().replace(/[^0-9]/g, '');
+        if (!phone) {
+          resultBox.innerHTML = '<strong>Missing number</strong><span>Please enter a valid WhatsApp number.</span>';
+          return;
+        }
+
+        resultBox.innerHTML = '<strong>Generating pairing code…</strong><span>Please wait a moment.</span>';
+        try {
+          const response = await fetch('/api/session/' + encodeURIComponent(sessionId) + '/pair', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sessionId, phoneNumber: phone })
+          });
+          const payload = await response.json();
+          if (payload && payload.pairingCode) {
+            resultBox.innerHTML = '<strong>' + payload.pairingCode + '</strong><span>Open WhatsApp Linked Devices and enter this code.</span>';
+          } else {
+            resultBox.innerHTML = '<strong>Unable to generate code</strong><span>Try again in a moment.</span>';
+          }
+        } catch (error) {
+          resultBox.innerHTML = '<strong>Pairing failed</strong><span>Please try again in a moment.</span>';
+        }
+      });
+
+      refreshBtn.addEventListener('click', () => loadQr());
+      createSession();
+    </script>
   </body>
 </html>`);
 });
