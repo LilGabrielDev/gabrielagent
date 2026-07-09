@@ -22,6 +22,8 @@ const app = express();
 const sessions = new WhatsAppSessionManager();
 const pinoHttp = pinoHttpImport.default || pinoHttpImport;
 
+app.set("trust proxy", true);
+
 app.disable("x-powered-by");
 app.post(
   "/api/github/webhook",
@@ -224,7 +226,7 @@ async function start() {
   try {
     await sessions.bootstrap();
 
-    const server = app.listen(config.port, () => {
+    const server = app.listen(config.port, "0.0.0.0", () => {
       logger.info(
         {
           port: config.port,

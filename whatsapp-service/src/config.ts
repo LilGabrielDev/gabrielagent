@@ -45,31 +45,27 @@ function validateEnvironment() {
 }
 
 function detectPublicUrl() {
-  const explicit = process.env.PUBLIC_URL || process.env.RENDER_EXTERNAL_URL;
-  if (explicit) return explicit.replace(/\/+$/, "");
-
-  if (process.env.RAILWAY_PUBLIC_DOMAIN) {
-    return `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`;
+  const explicit = process.env.PUBLIC_URL || process.env.RENDER_EXTERNAL_URL || process.env.RENDER_EXTERNAL_URL || process.env.RAILWAY_PUBLIC_DOMAIN || process.env.FLY_APP_NAME;
+  if (explicit) {
+    if (process.env.RAILWAY_PUBLIC_DOMAIN) return `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`;
+    if (process.env.FLY_APP_NAME) return `https://${process.env.FLY_APP_NAME}.fly.dev`;
+    return explicit.replace(/\/+$/, "");
   }
 
-  if (process.env.FLY_APP_NAME) {
-    return `https://${process.env.FLY_APP_NAME}.fly.dev`;
-  }
-
-  return `http://localhost:${process.env.PORT || 3000}`;
+  return `http://0.0.0.0:${process.env.PORT || 3001}`;
 }
 
 export const config = {
-  port: Number(process.env.PORT || 3000),
+  port: Number(process.env.PORT || 3001),
   apiKey: process.env.API_KEY || "",
   corsOrigins: parseOrigins(process.env.ALLOWED_ORIGINS || process.env.CORS_ORIGIN),
   sessionPath: path.resolve(process.env.SESSION_PATH || "./sessions"),
   sessionStore: process.env.SESSION_STORE || "file",
   autoUpdate: {
-    enabled: process.env.AUTO_UPDATE_ENABLED === "true",
+    enabled: false,
     webhookSecret: process.env.GITHUB_WEBHOOK_SECRET || "",
     branch: process.env.AUTO_UPDATE_BRANCH || "main",
-    restart: process.env.AUTO_UPDATE_RESTART !== "false",
+    restart: false,
   },
   publicUrl: detectPublicUrl(),
   logLevel: process.env.LOG_LEVEL || "info",

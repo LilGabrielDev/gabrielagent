@@ -15,6 +15,10 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      - key: PORT
+        value: 3001
+      - key: HOST
+        value: 0.0.0.0
       - key: SESSION_STORE
         value: file
       - key: SESSION_PATH
@@ -23,3 +27,7 @@ services:
         value: info
       - key: FRONTEND_URL
         value: https://gabrielagent.vercel.app
+      - key: AUTO_UPDATE_ENABLED
+        value: false
+      - key: AUTO_UPDATE_RESTART
+        value: false

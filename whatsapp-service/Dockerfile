@@ -13,7 +13,8 @@ RUN npm run build
 FROM node:20-bookworm-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production
-ENV PORT=3000
+ENV PORT=3001
+ENV HOST=0.0.0.0
 
 COPY package*.json ./
 RUN npm ci --omit=dev
@@ -25,5 +26,5 @@ COPY --from=build /app/tsconfig.json ./tsconfig.json
 
 RUN mkdir -p /app/sessions
 VOLUME ["/app/sessions"]
-EXPOSE 3000
+EXPOSE 3001
 CMD ["node", "index.js"]
