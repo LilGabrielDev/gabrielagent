@@ -8,7 +8,7 @@ import type { WhatsAppProvider, WhatsAppProviderEvent } from "./providers/base.j
 export type WhatsAppEngine = "whatsapp-web.js" | "baileys";
 
 export class WhatsAppSessionManager {
-  private sessions = new Map<string, WhatsAppProvider>();
+  private sessions = new Map<string, { provider: WhatsAppProvider; lastUpdated: number; engine: WhatsAppEngine }>();
   private store = createSessionStore();
   private events = new EventEmitter();
 
@@ -17,10 +17,12 @@ export class WhatsAppSessionManager {
     return () => this.events.off("session", listener);
   }
 
-  async createSession(sessionId: string, engine: WhatsAppEngine = "baileys") {
+  async createSession(sessionId: string, engine: WhatsAppEngine = "baileys", phoneNumber?: string) {
     validateSessionId(sessionId);
     const existing = this.sessions.get(sessionId);
-    if (existing) return existing.getStatus();
+    if (existing) {
+      return existing.provider.getStatus();
+    }
 
     const sessionPath = this.store.getSessionPath(sessionId);
     let provider: WhatsAppProvider;
@@ -33,23 +35,39 @@ export class WhatsAppSessionManager {
 
     provider.on("event", (event: WhatsAppProviderEvent) => {
       this.events.emit("session", event);
+      const current = this.sessions.get(sessionId);
+      if (current) {
+        current.lastUpdated = Date.now();
+      }
     });
 
     await provider.initialize();
-    this.sessions.set(sessionId, provider);
+    if (phoneNumber) {
+      const normalized = phoneNumber.trim();
+      if (normalized) {
+        provider.emit("event", {
+          event: "status",
+          sessionId,
+          status: provider.getStatus(),
+          phoneNumber: normalized,
+        } as WhatsAppProviderEvent);
+      }
+    }
+
+    this.sessions.set(sessionId, { provider, lastUpdated: Date.now(), engine });
     return provider.getStatus();
   }
 
   async pair(sessionId: string, phoneNumber: string) {
-    const provider = this.sessions.get(sessionId);
-    if (!provider) throw new Error("Session not found");
-    return await provider.requestPairingCode(phoneNumber);
+    const current = this.sessions.get(sessionId);
+    if (!current) throw new Error("Session not found");
+    return await current.provider.requestPairingCode(phoneNumber);
   }
 
   async logout(sessionId: string) {
-    const provider = this.sessions.get(sessionId);
-    if (provider) {
-      await provider.logout();
+    const current = this.sessions.get(sessionId);
+    if (current) {
+      await current.provider.logout();
       this.sessions.delete(sessionId);
       await this.store.remove(sessionId);
     }
@@ -57,11 +75,23 @@ export class WhatsAppSessionManager {
   }
 
   getStatus(sessionId: string) {
-    const provider = this.sessions.get(sessionId);
-    return provider ? provider.getStatus() : "disconnected";
+    const current = this.sessions.get(sessionId);
+    return current ? current.provider.getStatus() : "disconnected";
   }
 
   getProvider(sessionId: string) {
-    return this.sessions.get(sessionId);
+    return this.sessions.get(sessionId)?.provider;
+  }
+
+  getQr(sessionId: string) {
+    return this.sessions.get(sessionId)?.provider.getQr() ?? null;
+  }
+
+  getPairingCode(sessionId: string) {
+    return this.sessions.get(sessionId)?.provider.getPairingCode() ?? null;
+  }
+
+  getPhoneNumber(sessionId: string) {
+    return this.sessions.get(sessionId)?.provider.getPhoneNumber() ?? null;
   }
 }

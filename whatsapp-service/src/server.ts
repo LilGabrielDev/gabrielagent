@@ -96,7 +96,7 @@ app.post("/api/session/create", async (req, res, next) => {
     }).parse(req.body);
 
     const sid = sessionId || `session_${Date.now()}`;
-    await sessions.createSession(sid, engine as WhatsAppEngine);
+    await sessions.createSession(sid, engine as WhatsAppEngine, phoneNumber);
     
     res.json({ success: true, sessionId: sid });
   } catch (error) {
@@ -132,7 +132,7 @@ app.post("/api/session/qr", async (req, res, next) => {
     const provider = sessions.getProvider(sessionId);
     if (!provider) throw new HttpError(404, "Session not found");
 
-    res.json({ success: true, qr: (provider as any).qr });
+    res.json({ success: true, qr: provider.getQr() });
   } catch (error) {
     next(error);
   }

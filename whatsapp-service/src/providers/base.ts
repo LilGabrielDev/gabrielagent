@@ -30,6 +30,9 @@ export abstract class WhatsAppProvider extends EventEmitter {
   abstract logout(): Promise<void>;
   abstract disconnect(): Promise<void>;
   abstract getStatus(): SessionStatus;
+  abstract getQr(): string | null;
+  abstract getPairingCode(): string | null;
+  abstract getPhoneNumber(): string | null;
 
   protected emitEvent(event: WhatsAppProviderEvent["event"], data: Partial<WhatsAppProviderEvent>) {
     this.emit("event", {

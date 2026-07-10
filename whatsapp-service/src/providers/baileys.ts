@@ -121,4 +121,16 @@ export class BaileysProvider extends WhatsAppProvider {
   getStatus(): SessionStatus {
     return this.status;
   }
+
+  getQr(): string | null {
+    return this.qr;
+  }
+
+  getPairingCode(): string | null {
+    return this.pairingCode;
+  }
+
+  getPhoneNumber(): string | null {
+    return this.phoneNumber;
+  }
 }
