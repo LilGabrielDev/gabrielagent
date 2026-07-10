@@ -12,9 +12,21 @@ import rateLimit from "express-rate-limit";
 
 const app = express();
 const httpServer = createServer(app);
+
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  process.env.BACKEND_URL,
+  "http://localhost:3000",
+  "http://localhost:3001",
+  "http://localhost:5173",
+  "http://127.0.0.1:3000",
+  "http://127.0.0.1:3001",
+  "http://127.0.0.1:5173",
+].filter((origin): origin is string => Boolean(origin));
+
 const io = new Server(httpServer, {
   cors: {
-    origin: ["https://your-vercel-domain.vercel.app", "http://localhost:3000", "http://localhost:5173"],
+    origin: allowedOrigins.length > 0 ? allowedOrigins : true,
     methods: ["GET", "POST"],
     credentials: true,
   },
@@ -22,7 +34,22 @@ const io = new Server(httpServer, {
 
 const sessions = new WhatsAppSessionManager();
 
-app.use(helmet());
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.socket.io", "https://cdn.tailwindcss.com"],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.tailwindcss.com"],
+        imgSrc: ["'self'", "data:", "https:"],
+        connectSrc: ["'self'", "ws:", "wss:", "https://cdn.socket.io"],
+        objectSrc: ["'none'"],
+        baseUri: ["'self'"],
+        formAction: ["'self'"],
+      },
+    },
+  })
+);
 app.use(compression());
 
 const limiter = rateLimit({
@@ -36,11 +63,6 @@ app.use(limiter);
 app.use(
   cors({
     origin: (origin, callback) => {
-      const allowedOrigins = [
-        "https://your-vercel-domain.vercel.app",
-        "http://localhost:3000",
-        "http://localhost:5173",
-      ];
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
@@ -53,6 +75,14 @@ app.use(
 
 app.use(express.json({ limit: "64kb" }));
 app.use(express.static("public"));
+
+app.get("/health", (_req, res) => {
+  res.status(200).json({ status: "ok" });
+});
+
+app.get("/", (_req, res) => {
+  res.sendFile("index.html", { root: "public" });
+});
 
 // Session creation
 app.post("/api/session/create", async (req, res, next) => {
@@ -126,7 +156,7 @@ app.post("/api/session/disconnect", async (req, res, next) => {
 
 // Error handling middleware
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  const status = err instanceof HttpError ? err.status : 500;
+  const status = err instanceof HttpError ? err.statusCode : 500;
   logger.error(err);
   res.status(status).json({
     success: false,
@@ -153,7 +183,8 @@ sessions.onEvent((event) => {
   io.to(event.sessionId).emit("status", { sessionId: event.sessionId, status: event.status });
 });
 
-const PORT = process.env.PORT || 3000;
-httpServer.listen(PORT, () => {
-  logger.info({ PORT }, "Server running");
+const PORT = Number(process.env.PORT || 3000);
+const HOST = process.env.HOST || "0.0.0.0";
+httpServer.listen(PORT, HOST, () => {
+  logger.info({ PORT, HOST }, "Server running");
 });

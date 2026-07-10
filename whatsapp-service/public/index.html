@@ -3,49 +3,92 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WhatsApp Service Manager</title>
+    <title>WhatsApp Session Dashboard</title>
     <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .log-entry.qr { color: #2563eb; }
+        .log-entry.pairing { color: #f59e0b; }
+        .log-entry.authenticated { color: #10b981; }
+        .log-entry.ready { color: #059669; }
+        .log-entry.disconnected { color: #ef4444; }
+        .log-entry.error { color: #dc2626; }
+        .log-entry.status { color: #6b7280; }
+    </style>
 </head>
-<body class="bg-gray-100 min-h-screen p-8">
-    <div class="max-w-2xl mx-auto bg-white rounded-lg shadow-md p-6">
-        <h1 class="text-2xl font-bold mb-6 text-center text-green-600">WhatsApp Service Manager</h1>
+<body class="bg-gray-100 min-h-screen p-4 sm:p-8">
+    <div class="max-w-4xl mx-auto bg-white rounded-lg shadow-xl p-6 sm:p-8">
+        <h1 class="text-3xl font-extrabold mb-8 text-center text-green-700">WhatsApp Session Dashboard</h1>
         
-        <div id="setup-section" class="space-y-4">
-            <div>
-                <label class="block text-sm font-medium text-gray-700">Session ID</label>
-                <input type="text" id="session-id" placeholder="e.g., default" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2">
+        <div id="session-list-section" class="mb-8">
+            <h2 class="text-2xl font-semibold mb-4 text-gray-800">Active Sessions</h2>
+            <div id="sessions-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <!-- Session cards will be injected here -->
+                <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 flex items-center justify-between">
+                    <span class="text-gray-600">No active sessions. Create one below!</span>
+                </div>
             </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700">WhatsApp Engine</label>
-                <select id="engine-select" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2">
-                    <option value="baileys">Baileys (Fast & Reliable)</option>
-                    <option value="whatsapp-web.js">WhatsApp-Web.js (Browser-based)</option>
-                </select>
-            </div>
-            <button onclick="createSession()" id="create-btn" class="w-full bg-green-500 text-white font-bold py-2 px-4 rounded hover:bg-green-600">Create Session</button>
         </div>
 
-        <div id="session-section" class="hidden space-y-6 mt-6 border-t pt-6">
-            <div class="flex justify-between items-center">
-                <span id="status-badge" class="px-3 py-1 rounded-full text-sm font-semibold bg-gray-200 text-gray-700">Status: Disconnected</span>
-                <button onclick="disconnect()" class="text-red-500 hover:underline text-sm">Disconnect</button>
-            </div>
-
-            <div id="qr-container" class="hidden text-center">
-                <p class="text-sm text-gray-600 mb-2">Scan this QR code with WhatsApp</p>
-                <img id="qr-image" class="mx-auto border p-2 bg-white" alt="QR Code">
-            </div>
-
-            <div id="pairing-section" class="space-y-4">
-                <p class="text-sm text-gray-600">Or use a pairing code</p>
-                <div class="flex space-x-2">
-                    <input type="text" id="phone-number" placeholder="Phone (e.g., 254712345678)" class="flex-1 border border-gray-300 rounded-md shadow-sm p-2">
-                    <button onclick="requestPairing()" id="pair-btn" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Get Code</button>
+        <div id="create-session-section" class="bg-green-50 p-6 rounded-lg shadow-inner mb-8">
+            <h2 class="text-2xl font-semibold mb-4 text-green-800">Create New Session</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label for="new-session-id" class="block text-sm font-medium text-gray-700">Session ID (Optional)</label>
+                    <input type="text" id="new-session-id" placeholder="Leave blank for auto-generate" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-green-500 focus:border-green-500">
                 </div>
-                <div id="pairing-code-display" class="hidden text-center p-4 bg-gray-50 border rounded">
-                    <span class="text-sm text-gray-500 block">Your Pairing Code:</span>
-                    <span id="pairing-code" class="text-2xl font-mono font-bold tracking-widest text-blue-600"></span>
+                <div>
+                    <label for="new-engine-select" class="block text-sm font-medium text-gray-700">WhatsApp Engine</label>
+                    <select id="new-engine-select" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-green-500 focus:border-green-500">
+                        <option value="baileys">Baileys (Recommended)</option>
+                        <option value="whatsapp-web.js">WhatsApp-Web.js</option>
+                    </select>
+                </div>
+            </div>
+            <button onclick="createNewSession()" class="w-full bg-green-600 text-white font-bold py-2 px-4 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2">Create Session</button>
+        </div>
+
+        <div id="session-details-section" class="hidden bg-blue-50 p-6 rounded-lg shadow-inner">
+            <h2 class="text-2xl font-semibold mb-4 text-blue-800">Session Details: <span id="current-session-id-display" class="font-mono text-blue-600"></span></h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div>
+                    <h3 class="text-xl font-medium mb-3 text-gray-700">Authentication</h3>
+                    <div id="qr-container" class="hidden text-center bg-white p-4 rounded-lg shadow-sm mb-4">
+                        <p class="text-sm text-gray-600 mb-2">Scan with WhatsApp Link Device</p>
+                        <img id="qr-image" class="mx-auto border border-gray-300 p-2 bg-white max-w-[256px]" alt="QR Code">
+                    </div>
+
+                    <div id="pairing-section" class="space-y-3">
+                        <p class="text-sm text-gray-600">Or enter a pairing code:</p>
+                        <div class="flex space-x-2">
+                            <input type="text" id="phone-number" placeholder="Phone (e.g., 254712345678)" class="flex-1 border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
+                            <button onclick="requestPairingCode()" id="pair-btn" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">Get Code</button>
+                        </div>
+                        <div id="pairing-code-display" class="hidden text-center p-4 bg-blue-100 border border-blue-300 rounded-lg">
+                            <span class="text-sm text-blue-700 block">Your Pairing Code:</span>
+                            <span id="pairing-code" class="text-3xl font-mono font-bold tracking-widest text-blue-800"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 class="text-xl font-medium mb-3 text-gray-700">Session Status & Actions</h3>
+                    <div class="bg-white p-4 rounded-lg shadow-sm mb-4">
+                        <p class="text-gray-600 mb-2">Current Status: <span id="current-status" class="font-semibold text-gray-800">Disconnected</span></p>
+                        <p class="text-gray-600">Engine: <span id="current-engine" class="font-semibold text-gray-800">N/A</span></p>
+                    </div>
+                    <div class="flex space-x-3">
+                        <button onclick="disconnectSession()" class="flex-1 bg-red-500 text-white font-bold py-2 px-4 rounded-md hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2">Disconnect</button>
+                        <button onclick="refreshStatus()" class="flex-1 bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2">Refresh Status</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-8">
+                <h3 class="text-xl font-medium mb-3 text-gray-700">Activity Log</h3>
+                <div id="activity-log" class="bg-gray-800 text-white p-4 rounded-lg h-64 overflow-y-scroll font-mono text-sm">
+                    <!-- Log entries will be appended here -->
                 </div>
             </div>
         </div>
@@ -53,109 +96,305 @@
 
     <script>
         let socket;
-        let currentSessionId;
+        let currentSessionId = null;
+        const sessionsMap = new Map(); // Stores session data: { sessionId: { status, engine, qr, pairingCode, phoneNumber, logs: [] } }
 
-        async function createSession() {
-            const sessionId = document.getElementById('session-id').value || 'default';
-            const engine = document.getElementById('engine-select').value;
-            const btn = document.getElementById('create-btn');
+        function logActivity(sessionId, type, message, data = {}) {
+            const logContainer = document.getElementById("activity-log");
+            const entry = document.createElement("div");
+            entry.classList.add("log-entry", type);
+            entry.innerHTML = `<span class="text-gray-400">[${new Date().toLocaleTimeString()}]</span> <span class="font-bold">${type.toUpperCase()}</span> [${sessionId}]: ${message} ${JSON.stringify(data)}`;
+            logContainer.prepend(entry);
+            if (logContainer.children.length > 100) {
+                logContainer.removeChild(logContainer.lastChild);
+            }
+
+            if (sessionsMap.has(sessionId)) {
+                const session = sessionsMap.get(sessionId);
+                session.logs.unshift({ timestamp: new Date().toLocaleTimeString(), type, message, data });
+                if (session.logs.length > 100) session.logs.pop();
+            }
+        }
+
+        function updateSessionCard(sessionId) {
+            const session = sessionsMap.get(sessionId);
+            if (!session) return;
+
+            let card = document.getElementById(`session-card-${sessionId}`);
+            if (!card) {
+                const container = document.getElementById("sessions-container");
+                if (container.querySelector(".bg-gray-50")) { // Remove "No active sessions" message
+                    container.innerHTML = '';
+                }
+                card = document.createElement("div");
+                card.id = `session-card-${sessionId}`;
+                card.className = "bg-white border border-gray-200 rounded-lg p-4 flex flex-col justify-between shadow-sm hover:shadow-md transition-shadow duration-200";
+                card.innerHTML = `
+                    <div class="flex justify-between items-center mb-2">
+                        <h3 class="font-semibold text-gray-700">Session: <span class="font-mono text-blue-600">${sessionId}</span></h3>
+                        <span id="status-${sessionId}" class="px-2 py-1 rounded-full text-xs font-medium"></span>
+                    </div>
+                    <p class="text-sm text-gray-500 mb-3">Engine: <span id="engine-${sessionId}">${session.engine}</span></p>
+                    <button onclick="viewSessionDetails('${sessionId}')" class="w-full bg-blue-500 text-white text-sm py-1.5 rounded hover:bg-blue-600">View Details</button>
+                `;
+                container.appendChild(card);
+            }
+
+            const statusBadge = card.querySelector(`#status-${sessionId}`);
+            statusBadge.innerText = session.status;
+            let statusClass = '';
+            switch (session.status) {
+                case 'ready': statusClass = 'bg-green-100 text-green-800'; break;
+                case 'authenticated': statusClass = 'bg-green-100 text-green-800'; break;
+                case 'waiting_qr': statusClass = 'bg-yellow-100 text-yellow-800'; break;
+                case 'generating_pairing': statusClass = 'bg-indigo-100 text-indigo-800'; break;
+                case 'disconnected': statusClass = 'bg-red-100 text-red-800'; break;
+                case 'failed': statusClass = 'bg-red-100 text-red-800'; break;
+                default: statusClass = 'bg-gray-100 text-gray-800'; break;
+            }
+            statusBadge.className = `px-2 py-1 rounded-full text-xs font-medium ${statusClass}`;
+        }
+
+        function viewSessionDetails(sessionId) {
+            currentSessionId = sessionId;
+            renderSessionDetails();
+            document.getElementById('session-list-section').classList.add('hidden');
+            document.getElementById('create-session-section').classList.add('hidden');
+            document.getElementById('session-details-section').classList.remove('hidden');
+        }
+
+        function renderSessionDetails() {
+            if (!currentSessionId) return;
+            const session = sessionsMap.get(currentSessionId);
+            if (!session) return;
+
+            document.getElementById('current-session-id-display').innerText = currentSessionId;
+            document.getElementById('current-status').innerText = session.status;
+            document.getElementById('current-engine').innerText = session.engine;
+
+            const qrContainer = document.getElementById('qr-container');
+            const qrImage = document.getElementById('qr-image');
+            if (session.qr) {
+                qrImage.src = session.qr;
+                qrContainer.classList.remove('hidden');
+            } else {
+                qrContainer.classList.add('hidden');
+            }
+
+            const pairingCodeDisplay = document.getElementById('pairing-code-display');
+            const pairingCodeSpan = document.getElementById('pairing-code');
+            if (session.pairingCode) {
+                pairingCodeSpan.innerText = session.pairingCode;
+                pairingCodeDisplay.classList.remove('hidden');
+            } else {
+                pairingCodeDisplay.classList.add('hidden');
+            }
+
+            const activityLog = document.getElementById('activity-log');
+            activityLog.innerHTML = '';
+            session.logs.forEach(log => {
+                const entry = document.createElement("div");
+                entry.classList.add("log-entry", log.type);
+                entry.innerHTML = `<span class="text-gray-400">[${log.timestamp}]</span> <span class="font-bold">${log.type.toUpperCase()}</span>: ${log.message} ${JSON.stringify(log.data)}`;
+                activityLog.appendChild(entry);
+            });
+        }
+
+        const apiBaseUrl = window.location.origin;
+
+        async function createNewSession() {
+            const sessionId = document.getElementById('new-session-id').value.trim();
+            const engine = document.getElementById('new-engine-select').value;
             
-            btn.disabled = true;
-            btn.innerText = 'Initializing...';
-
             try {
-                const res = await fetch('/api/session/create', {
+                const res = await fetch(`${apiBaseUrl}/api/session/create`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ sessionId, engine })
+                    body: JSON.stringify({ sessionId: sessionId || undefined, engine })
                 });
                 const data = await res.json();
                 
                 if (data.success) {
-                    currentSessionId = data.sessionId;
-                    setupSocket(currentSessionId);
-                    showSessionUI();
+                    const newSessionId = data.sessionId;
+                    sessionsMap.set(newSessionId, { status: 'initializing', engine, qr: null, pairingCode: null, phoneNumber: null, logs: [] });
+                    updateSessionCard(newSessionId);
+                    logActivity(newSessionId, 'info', `Session created with engine ${engine}`);
+                    setupSocket(newSessionId);
+                    viewSessionDetails(newSessionId);
                 } else {
-                    alert('Error: ' + data.message);
-                    btn.disabled = false;
-                    btn.innerText = 'Create Session';
+                    alert('Error creating session: ' + data.message);
                 }
             } catch (err) {
-                alert('Failed to connect to server');
-                btn.disabled = false;
-                btn.innerText = 'Create Session';
+                console.error('Error creating session:', err);
+                alert('Failed to connect to server or create session.');
+            }
+        }
+
+        async function requestPairingCode() {
+            if (!currentSessionId) return alert('No session selected.');
+            const phoneNumber = document.getElementById('phone-number').value.trim();
+            if (!phoneNumber) return alert('Please enter a phone number.');
+
+            try {
+                const res = await fetch(`${apiBaseUrl}/api/session/pairing`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sessionId: currentSessionId, phoneNumber })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    sessionsMap.get(currentSessionId).pairingCode = data.pairingCode;
+                    sessionsMap.get(currentSessionId).phoneNumber = phoneNumber;
+                    logActivity(currentSessionId, 'pairing', 'Pairing code requested', { pairingCode: data.pairingCode });
+                    renderSessionDetails();
+                } else {
+                    alert('Error requesting pairing code: ' + data.message);
+                }
+            } catch (err) {
+                console.error('Error requesting pairing code:', err);
+                alert('Failed to request pairing code.');
+            }
+        }
+
+        async function disconnectSession() {
+            if (!currentSessionId) return alert('No session selected.');
+            if (!confirm(`Are you sure you want to disconnect session ${currentSessionId}?`)) return;
+
+            try {
+                const res = await fetch(`${apiBaseUrl}/api/session/disconnect`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sessionId: currentSessionId })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    logActivity(currentSessionId, 'disconnected', 'Session disconnected');
+                    sessionsMap.delete(currentSessionId);
+                    currentSessionId = null;
+                    initDashboard(); // Re-initialize to show session list
+                } else {
+                    alert('Error disconnecting session: ' + data.message);
+                }
+            } catch (err) {
+                console.error('Error disconnecting session:', err);
+                alert('Failed to disconnect session.');
+            }
+        }
+
+        async function refreshStatus() {
+            if (!currentSessionId) return alert('No session selected.');
+            try {
+                const res = await fetch(`${apiBaseUrl}/api/session/status/${currentSessionId}`);
+                const data = await res.json();
+                if (data.status) {
+                    sessionsMap.get(currentSessionId).status = data.status;
+                    logActivity(currentSessionId, 'status', `Status refreshed: ${data.status}`);
+                    renderSessionDetails();
+                    updateSessionCard(currentSessionId);
+                }
+            } catch (err) {
+                console.error('Error refreshing status:', err);
+                alert('Failed to refresh status.');
             }
         }
 
         function setupSocket(sessionId) {
             if (socket) socket.disconnect();
             
-            socket = io({ query: { sessionId } });
+            socket = io(apiBaseUrl, { query: { sessionId } });
+
+            socket.on('connect', () => {
+                logActivity(sessionId, 'info', 'Socket connected');
+            });
+
+            socket.on('disconnect', () => {
+                logActivity(sessionId, 'info', 'Socket disconnected');
+            });
 
             socket.on('qr', (data) => {
-                if (data.qr) {
-                    document.getElementById('qr-container').classList.remove('hidden');
-                    document.getElementById('qr-image').src = data.qr;
+                if (sessionsMap.has(data.sessionId)) {
+                    sessionsMap.get(data.sessionId).qr = data.qr;
+                    sessionsMap.get(data.sessionId).status = 'waiting_qr';
+                    logActivity(data.sessionId, 'qr', 'New QR code received', { qr: data.qr.substring(0, 30) + '...' });
+                    if (currentSessionId === data.sessionId) renderSessionDetails();
+                    updateSessionCard(data.sessionId);
                 }
             });
 
             socket.on('pairing', (data) => {
-                if (data.pairingCode) {
-                    document.getElementById('pairing-code-display').classList.remove('hidden');
-                    document.getElementById('pairing-code').innerText = data.pairingCode;
+                if (sessionsMap.has(data.sessionId)) {
+                    sessionsMap.get(data.sessionId).pairingCode = data.pairingCode;
+                    sessionsMap.get(data.sessionId).status = 'generating_pairing';
+                    logActivity(data.sessionId, 'pairing', 'Pairing code received', { pairingCode: data.pairingCode });
+                    if (currentSessionId === data.sessionId) renderSessionDetails();
+                    updateSessionCard(data.sessionId);
+                }
+            });
+
+            socket.on('authenticated', (data) => {
+                if (sessionsMap.has(data.sessionId)) {
+                    sessionsMap.get(data.sessionId).status = 'authenticated';
+                    sessionsMap.get(data.sessionId).qr = null;
+                    sessionsMap.get(data.sessionId).pairingCode = null;
+                    logActivity(data.sessionId, 'authenticated', 'Session authenticated');
+                    if (currentSessionId === data.sessionId) renderSessionDetails();
+                    updateSessionCard(data.sessionId);
+                }
+            });
+
+            socket.on('ready', (data) => {
+                if (sessionsMap.has(data.sessionId)) {
+                    sessionsMap.get(data.sessionId).status = 'ready';
+                    logActivity(data.sessionId, 'ready', 'Session ready');
+                    if (currentSessionId === data.sessionId) renderSessionDetails();
+                    updateSessionCard(data.sessionId);
                 }
             });
 
             socket.on('status', (data) => {
-                const badge = document.getElementById('status-badge');
-                badge.innerText = 'Status: ' + data.status;
-                
-                if (data.status === 'ready') {
-                    badge.className = 'px-3 py-1 rounded-full text-sm font-semibold bg-green-100 text-green-700';
-                    document.getElementById('qr-container').classList.add('hidden');
-                    document.getElementById('pairing-section').classList.add('hidden');
-                } else if (data.status === 'waiting_qr') {
-                    badge.className = 'px-3 py-1 rounded-full text-sm font-semibold bg-yellow-100 text-yellow-700';
+                if (sessionsMap.has(data.sessionId)) {
+                    sessionsMap.get(data.sessionId).status = data.status;
+                    logActivity(data.sessionId, 'status', `Status updated to ${data.status}`);
+                    if (currentSessionId === data.sessionId) renderSessionDetails();
+                    updateSessionCard(data.sessionId);
+                }
+            });
+
+            socket.on('disconnected', (data) => {
+                if (sessionsMap.has(data.sessionId)) {
+                    sessionsMap.get(data.sessionId).status = 'disconnected';
+                    logActivity(data.sessionId, 'disconnected', `Session disconnected: ${data.error || ''}`);
+                    if (currentSessionId === data.sessionId) renderSessionDetails();
+                    updateSessionCard(data.sessionId);
+                }
+            });
+
+            socket.on('error', (data) => {
+                if (sessionsMap.has(data.sessionId)) {
+                    sessionsMap.get(data.sessionId).status = 'failed';
+                    logActivity(data.sessionId, 'error', `Session error: ${data.error || ''}`);
+                    if (currentSessionId === data.sessionId) renderSessionDetails();
+                    updateSessionCard(data.sessionId);
                 }
             });
         }
 
-        async function requestPairing() {
-            const phoneNumber = document.getElementById('phone-number').value;
-            if (!phoneNumber) return alert('Enter phone number');
-            
-            const btn = document.getElementById('pair-btn');
-            btn.disabled = true;
-            btn.innerText = 'Requesting...';
-
-            try {
-                const res = await fetch('/api/session/pairing', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ sessionId: currentSessionId, phoneNumber })
-                });
-                const data = await res.json();
-                if (!data.success) alert(data.message);
-            } finally {
-                btn.disabled = false;
-                btn.innerText = 'Get Code';
-            }
+        function initDashboard() {
+            document.getElementById('session-list-section').classList.remove('hidden');
+            document.getElementById('create-session-section').classList.remove('hidden');
+            document.getElementById('session-details-section').classList.add('hidden');
+            document.getElementById('sessions-container').innerHTML = `
+                <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 flex items-center justify-between">
+                    <span class="text-gray-600">No active sessions. Create one below!</span>
+                </div>
+            `;
+            sessionsMap.clear();
+            currentSessionId = null;
+            // Optionally, fetch existing sessions from the backend on load
         }
 
-        async function disconnect() {
-            if (!confirm('Disconnect session?')) return;
-            await fetch('/api/session/disconnect', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ sessionId: currentSessionId })
-            });
-            location.reload();
-        }
-
-        function showSessionUI() {
-            document.getElementById('setup-section').classList.add('hidden');
-            document.getElementById('session-section').classList.remove('hidden');
-        }
+        // Initialize dashboard on load
+        document.addEventListener('DOMContentLoaded', initDashboard);
     </script>
 </body>
 </html>

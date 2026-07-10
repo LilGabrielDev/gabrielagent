@@ -427,7 +427,7 @@ Every API response includes enterprise headers: `X-Request-Id`, `X-RateLimit-Lim
 gabrielagent/
 ├── prisma/                  # Database schema, migrations, seed
 ├── public/                  # Static assets (logo, chat widget)
-├── whatsapp-service/        # Standalone Baileys service (QR/pair/logout)
+├── whatsapp-service/        # Standalone Baileys service/webjs backend (QR/pair/logout)
 ├── docs/
 │   ├── screenshots/         # UI screenshots
 │   ├── deployment-vercel.md   # Vercel + WhatsApp split deploy
@@ -528,16 +528,12 @@ The Helm chart includes startup/liveness/readiness probes, horizontal pod autosc
 - [ ] Vector embeddings for semantic knowledge search
 - [ ] Role-based access control (RBAC)
 - [ ] Telegram, Instagram, SMS channels
-- [ ] Shopify / WooCommerce integration
 - [ ] Mobile admin (PWA)
 - [ ] Multi-tenant / white-label
 
 ---
 
-## Contributing
-
-Contributions are welcome! See **[CONTRIBUTING.md](CONTRIBUTING.md)** for setup, feature areas, code style, and the PR checklist.
-
+## CONTRIBUTION
 ```bash
 git checkout -b feat/your-feature
 npm run test && npm run lint && npm run build
@@ -546,12 +542,6 @@ git push origin feat/your-feature
 ```
 
 Also see the in-app sitemap at `/help` after login.
-
----
-
-## License
-
-MIT License - see [LICENSE](LICENSE) for details.
 
 ---
 
