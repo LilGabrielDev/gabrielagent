@@ -21,7 +21,12 @@ COPY . .
 
 # Ensure we use the installed chromium
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+
+# Build the TypeScript project
+RUN npm run build
 
 EXPOSE 3000
 
-CMD ["npm", "run", "dev"]
+# Use the production start script
+CMD ["npm", "start"]
