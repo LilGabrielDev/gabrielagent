@@ -52,6 +52,7 @@ app.use(
 );
 
 app.use(express.json({ limit: "64kb" }));
+app.use(express.static("public"));
 
 // Session creation
 app.post("/api/session/create", async (req, res, next) => {

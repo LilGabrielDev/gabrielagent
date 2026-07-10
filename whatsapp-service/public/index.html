@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp Service Manager</title>
+    <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen p-8">
+    <div class="max-w-2xl mx-auto bg-white rounded-lg shadow-md p-6">
+        <h1 class="text-2xl font-bold mb-6 text-center text-green-600">WhatsApp Service Manager</h1>
+        
+        <div id="setup-section" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Session ID</label>
+                <input type="text" id="session-id" placeholder="e.g., default" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">WhatsApp Engine</label>
+                <select id="engine-select" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2">
+                    <option value="baileys">Baileys (Fast & Reliable)</option>
+                    <option value="whatsapp-web.js">WhatsApp-Web.js (Browser-based)</option>
+                </select>
+            </div>
+            <button onclick="createSession()" id="create-btn" class="w-full bg-green-500 text-white font-bold py-2 px-4 rounded hover:bg-green-600">Create Session</button>
+        </div>
+
+        <div id="session-section" class="hidden space-y-6 mt-6 border-t pt-6">
+            <div class="flex justify-between items-center">
+                <span id="status-badge" class="px-3 py-1 rounded-full text-sm font-semibold bg-gray-200 text-gray-700">Status: Disconnected</span>
+                <button onclick="disconnect()" class="text-red-500 hover:underline text-sm">Disconnect</button>
+            </div>
+
+            <div id="qr-container" class="hidden text-center">
+                <p class="text-sm text-gray-600 mb-2">Scan this QR code with WhatsApp</p>
+                <img id="qr-image" class="mx-auto border p-2 bg-white" alt="QR Code">
+            </div>
+
+            <div id="pairing-section" class="space-y-4">
+                <p class="text-sm text-gray-600">Or use a pairing code</p>
+                <div class="flex space-x-2">
+                    <input type="text" id="phone-number" placeholder="Phone (e.g., 254712345678)" class="flex-1 border border-gray-300 rounded-md shadow-sm p-2">
+                    <button onclick="requestPairing()" id="pair-btn" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Get Code</button>
+                </div>
+                <div id="pairing-code-display" class="hidden text-center p-4 bg-gray-50 border rounded">
+                    <span class="text-sm text-gray-500 block">Your Pairing Code:</span>
+                    <span id="pairing-code" class="text-2xl font-mono font-bold tracking-widest text-blue-600"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let socket;
+        let currentSessionId;
+
+        async function createSession() {
+            const sessionId = document.getElementById('session-id').value || 'default';
+            const engine = document.getElementById('engine-select').value;
+            const btn = document.getElementById('create-btn');
+            
+            btn.disabled = true;
+            btn.innerText = 'Initializing...';
+
+            try {
+                const res = await fetch('/api/session/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sessionId, engine })
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    currentSessionId = data.sessionId;
+                    setupSocket(currentSessionId);
+                    showSessionUI();
+                } else {
+                    alert('Error: ' + data.message);
+                    btn.disabled = false;
+                    btn.innerText = 'Create Session';
+                }
+            } catch (err) {
+                alert('Failed to connect to server');
+                btn.disabled = false;
+                btn.innerText = 'Create Session';
+            }
+        }
+
+        function setupSocket(sessionId) {
+            if (socket) socket.disconnect();
+            
+            socket = io({ query: { sessionId } });
+
+            socket.on('qr', (data) => {
+                if (data.qr) {
+                    document.getElementById('qr-container').classList.remove('hidden');
+                    document.getElementById('qr-image').src = data.qr;
+                }
+            });
+
+            socket.on('pairing', (data) => {
+                if (data.pairingCode) {
+                    document.getElementById('pairing-code-display').classList.remove('hidden');
+                    document.getElementById('pairing-code').innerText = data.pairingCode;
+                }
+            });
+
+            socket.on('status', (data) => {
+                const badge = document.getElementById('status-badge');
+                badge.innerText = 'Status: ' + data.status;
+                
+                if (data.status === 'ready') {
+                    badge.className = 'px-3 py-1 rounded-full text-sm font-semibold bg-green-100 text-green-700';
+                    document.getElementById('qr-container').classList.add('hidden');
+                    document.getElementById('pairing-section').classList.add('hidden');
+                } else if (data.status === 'waiting_qr') {
+                    badge.className = 'px-3 py-1 rounded-full text-sm font-semibold bg-yellow-100 text-yellow-700';
+                }
+            });
+        }
+
+        async function requestPairing() {
+            const phoneNumber = document.getElementById('phone-number').value;
+            if (!phoneNumber) return alert('Enter phone number');
+            
+            const btn = document.getElementById('pair-btn');
+            btn.disabled = true;
+            btn.innerText = 'Requesting...';
+
+            try {
+                const res = await fetch('/api/session/pairing', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sessionId: currentSessionId, phoneNumber })
+                });
+                const data = await res.json();
+                if (!data.success) alert(data.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerText = 'Get Code';
+            }
+        }
+
+        async function disconnect() {
+            if (!confirm('Disconnect session?')) return;
+            await fetch('/api/session/disconnect', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sessionId: currentSessionId })
+            });
+            location.reload();
+        }
+
+        function showSessionUI() {
+            document.getElementById('setup-section').classList.add('hidden');
+            document.getElementById('session-section').classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
