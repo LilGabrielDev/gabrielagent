@@ -1,30 +1,27 @@
-FROM node:20-bookworm-slim AS build
+FROM node:20-slim
+
+# Install dependencies for Puppeteer (needed by whatsapp-web.js)
+RUN apt-get update && apt-get install -y \
+    chromium \
+    fonts-ipafont-gothic \
+    fonts-wqy-zenhei \
+    fonts-thai-tlwg \
+    fonts-kacst \
+    fonts-freefont-ttf \
+    libxss1 \
+    --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm ci
+RUN npm install
 
-COPY tsconfig.json ./
-COPY src ./src
-COPY index.js ./index.js
+COPY . .
 
-RUN npm run build
+# Ensure we use the installed chromium
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
-FROM node:20-bookworm-slim AS runner
-WORKDIR /app
-ENV NODE_ENV=production
-ENV PORT=3001
-ENV HOST=0.0.0.0
+EXPOSE 3000
 
-COPY package*.json ./
-RUN npm ci --omit=dev
-
-COPY --from=build /app/dist ./dist
-COPY --from=build /app/index.js ./index.js
-COPY --from=build /app/package.json ./package.json
-COPY --from=build /app/tsconfig.json ./tsconfig.json
-
-RUN mkdir -p /app/sessions
-VOLUME ["/app/sessions"]
-EXPOSE 3001
-CMD ["node", "index.js"]
+CMD ["npm", "run", "dev"]
