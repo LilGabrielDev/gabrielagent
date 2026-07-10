@@ -17,6 +17,7 @@ const httpServer = createServer(app);
 const allowedOrigins = [
   process.env.FRONTEND_URL,
   process.env.BACKEND_URL,
+  process.env.NEXT_PUBLIC_APP_URL,
   "http://localhost:3000",
   "http://localhost:3001",
   "http://localhost:5173",
@@ -28,12 +29,14 @@ const allowedOrigins = [
 const io = new Server(httpServer, {
   cors: {
     origin: allowedOrigins.length > 0 ? allowedOrigins : true,
-    methods: ["GET", "POST"],
+    methods: ["GET", "POST", "DELETE"],
     credentials: true,
   },
 });
 
 const sessions = new WhatsAppSessionManager();
+const sessionIdSchema = z.string().trim().min(1).max(80).regex(/^[a-zA-Z0-9_-]+$/);
+const phoneNumberSchema = z.string().trim().min(8).max(16).regex(/^\+?[0-9]{8,15}$/);
 
 app.use(
   helmet({
@@ -54,8 +57,8 @@ app.use(
 app.use(compression());
 
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
+  windowMs: 15 * 60 * 1000,
+  max: 100,
   standardHeaders: true,
   legacyHeaders: false,
 });
@@ -77,6 +80,10 @@ app.use(
 app.use(express.json({ limit: "64kb" }));
 const publicDir = path.resolve(process.cwd(), "public");
 app.use(express.static(publicDir));
+app.use((req, _res, next) => {
+  logger.info({ method: req.method, path: req.path }, "API request");
+  next();
+});
 
 app.get("/health", (_req, res) => {
   res.status(200).json({ status: "ok" });
@@ -86,106 +93,214 @@ app.get("/", (_req, res) => {
   res.sendFile(path.join(publicDir, "index.html"));
 });
 
-// Session creation
 app.post("/api/session/create", async (req, res, next) => {
   try {
-    const { sessionId, phoneNumber, engine } = z.object({
-      sessionId: z.string().optional(),
-      phoneNumber: z.string().optional(),
-      engine: z.enum(["whatsapp-web.js", "baileys"]).optional().default("baileys"),
-    }).parse(req.body);
+    const body = z
+      .object({
+        sessionId: sessionIdSchema.optional(),
+        phoneNumber: phoneNumberSchema.optional(),
+        engine: z.enum(["whatsapp-web.js", "baileys"]).optional().default("baileys"),
+      })
+      .parse(req.body);
 
-    const sid = sessionId || `session_${Date.now()}`;
-    await sessions.createSession(sid, engine as WhatsAppEngine, phoneNumber);
-    
-    res.json({ success: true, sessionId: sid });
+    const sid = body.sessionId || `session_${Date.now()}`;
+    const snapshot = await sessions.createSession(sid, body.engine as WhatsAppEngine, body.phoneNumber);
+
+    res.status(201).json({ success: true, sessionId: sid, status: snapshot?.status ?? "initializing" });
   } catch (error) {
     next(error);
   }
 });
 
-// Pairing code request
 app.post("/api/session/pairing", async (req, res, next) => {
   try {
-    const { sessionId, phoneNumber } = z.object({
-      sessionId: z.string(),
-      phoneNumber: z.string().optional(),
-    }).parse(req.body);
+    const body = z
+      .object({
+        sessionId: sessionIdSchema,
+        phoneNumber: phoneNumberSchema.optional(),
+      })
+      .parse(req.body);
 
-    const provider = sessions.getProvider(sessionId);
-    if (!provider) throw new HttpError(404, "Session not found");
+    const snapshot = sessions.getSnapshot(body.sessionId);
+    if (!snapshot) {
+      await sessions.createSession(body.sessionId, "baileys", body.phoneNumber);
+    }
 
-    const phone = phoneNumber || (provider as any).phoneNumber;
-    if (!phone) throw new HttpError(400, "Phone number is required");
+    const phone = body.phoneNumber || sessions.getPhoneNumber(body.sessionId);
+    if (!phone) {
+      throw new HttpError(400, "Phone number is required");
+    }
 
-    const pairingCode = await provider.requestPairingCode(phone);
-    res.json({ success: true, pairingCode });
+    const pairingCode = await sessions.pair(body.sessionId, phone);
+    res.json({ success: true, sessionId: body.sessionId, pairingCode, status: sessions.getStatus(body.sessionId) });
   } catch (error) {
     next(error);
   }
 });
 
-// QR code request (REST fallback)
 app.post("/api/session/qr", async (req, res, next) => {
   try {
-    const { sessionId } = z.object({ sessionId: z.string() }).parse(req.body);
-    const provider = sessions.getProvider(sessionId);
-    if (!provider) throw new HttpError(404, "Session not found");
+    const body = z.object({ sessionId: sessionIdSchema }).parse(req.body);
+    const snapshot = sessions.getSnapshot(body.sessionId);
+    if (!snapshot) {
+      await sessions.createSession(body.sessionId, "baileys");
+    }
 
-    res.json({ success: true, qr: provider.getQr() });
+    res.json({ success: true, sessionId: body.sessionId, qr: sessions.getQr(body.sessionId), status: sessions.getStatus(body.sessionId) });
   } catch (error) {
     next(error);
   }
 });
 
-// Session status
 app.get("/api/session/status/:sessionId", (req, res) => {
   const { sessionId } = req.params;
-  const status = sessions.getStatus(sessionId);
-  res.json({ status });
+  const snapshot = sessions.getSnapshot(sessionId);
+  if (!snapshot) {
+    res.status(404).json({ success: false, message: "Session not found", error: "Session not found", code: "SESSION_NOT_FOUND" });
+    return;
+  }
+
+  res.json({ success: true, sessionId, status: snapshot.status, qr: snapshot.qr, pairingCode: snapshot.pairingCode, phoneNumber: snapshot.phoneNumber });
 });
 
-// Disconnect/Logout
-app.post("/api/session/disconnect", async (req, res, next) => {
+app.get("/api/session/:sessionId/status", (req, res) => {
+  void (req.params.sessionId);
+  res.redirect(307, `/api/session/status/${encodeURIComponent(req.params.sessionId)}`);
+});
+
+app.post("/api/session/:sessionId/qr", async (req, res, next) => {
   try {
-    const { sessionId } = z.object({ sessionId: z.string() }).parse(req.body);
-    await sessions.logout(sessionId);
-    res.json({ success: true });
+    const { sessionId } = req.params;
+    const snapshot = sessions.getSnapshot(sessionId);
+    if (!snapshot) {
+      await sessions.createSession(sessionId, "baileys");
+    }
+
+    res.json({ success: true, sessionId, qr: sessions.getQr(sessionId), status: sessions.getStatus(sessionId) });
   } catch (error) {
     next(error);
   }
 });
 
-// Error handling middleware
-app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  const status = err instanceof HttpError ? err.statusCode : 500;
-  logger.error(err);
+app.post("/api/session/:sessionId/pair", async (req, res, next) => {
+  try {
+    const { sessionId } = req.params;
+    const body = z.object({ phoneNumber: phoneNumberSchema.optional() }).parse(req.body);
+    const snapshot = sessions.getSnapshot(sessionId);
+    if (!snapshot) {
+      await sessions.createSession(sessionId, "baileys", body.phoneNumber);
+    }
+
+    const phone = body.phoneNumber || sessions.getPhoneNumber(sessionId);
+    if (!phone) {
+      throw new HttpError(400, "Phone number is required");
+    }
+
+    const pairingCode = await sessions.pair(sessionId, phone);
+    res.json({ success: true, sessionId, pairingCode, status: sessions.getStatus(sessionId) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/session/disconnect", async (req, res, next) => {
+  try {
+    const body = z.object({ sessionId: sessionIdSchema }).parse(req.body);
+    await sessions.logout(body.sessionId);
+    res.json({ success: true, sessionId: body.sessionId });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.delete("/api/session/:sessionId", async (req, res, next) => {
+  try {
+    await sessions.logout(req.params.sessionId);
+    res.json({ success: true, sessionId: req.params.sessionId });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/whatsapp/pair", async (req, res, next) => {
+  try {
+    const body = z.object({ sessionId: sessionIdSchema.optional(), phoneNumber: phoneNumberSchema }).parse(req.body);
+    const sessionId = body.sessionId || "default";
+    const snapshot = sessions.getSnapshot(sessionId);
+    if (!snapshot) {
+      await sessions.createSession(sessionId, "baileys", body.phoneNumber);
+    }
+
+    const pairingCode = await sessions.pair(sessionId, body.phoneNumber);
+    res.json({ success: true, sessionId, pairingCode, status: sessions.getStatus(sessionId), qr: sessions.getQr(sessionId) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.delete("/api/whatsapp/logout/:sessionId", async (req, res, next) => {
+  try {
+    const { sessionId } = req.params;
+    await sessions.logout(sessionId);
+    res.json({ success: true, sessionId });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/whatsapp/reconnect/:sessionId", async (req, res, next) => {
+  try {
+    const { sessionId } = req.params;
+    const snapshot = sessions.getSnapshot(sessionId);
+    if (!snapshot) {
+      await sessions.createSession(sessionId, "baileys");
+    }
+
+    res.json({ success: true, sessionId, status: sessions.getStatus(sessionId) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.use((error: unknown, req: express.Request, res: express.Response) => {
+  const status = error instanceof HttpError ? error.statusCode : 500;
+  const code = error instanceof HttpError ? error.code ?? "internal_error" : "internal_error";
+  const message = error instanceof Error ? error.message : "Internal Server Error";
+  logger.error({ err: error, method: req.method, path: req.path }, "Request failed");
   res.status(status).json({
     success: false,
-    message: err.message || "Internal Server Error",
+    message,
+    error: message,
+    code,
   });
 });
 
-// Socket.IO events
 io.on("connection", (socket) => {
-  const sessionId = socket.handshake.query.sessionId as string;
+  const sessionId = socket.handshake.query.sessionId as string | undefined;
   if (sessionId) {
     socket.join(sessionId);
-    logger.info({ sessionId }, "Socket client joined session room");
+    sessions.attachSocket(sessionId, socket.id);
+    const snapshot = sessions.getSnapshot(sessionId);
+    if (snapshot) {
+      socket.emit("status", { sessionId, status: snapshot.status, qr: snapshot.qr, pairingCode: snapshot.pairingCode, phoneNumber: snapshot.phoneNumber });
+    }
+    logger.info({ sessionId, socketId: socket.id }, "Socket client joined session room");
   }
 
   socket.on("disconnect", () => {
-    logger.info("Socket client disconnected");
+    if (sessionId) {
+      sessions.detachSocket(sessionId, socket.id);
+    }
+    logger.info({ sessionId, socketId: socket.id }, "Socket client disconnected");
   });
 });
 
-// Listen for WhatsApp events and broadcast via Socket.IO
 sessions.onEvent((event) => {
   io.to(event.sessionId).emit(event.event, event);
-  io.to(event.sessionId).emit("status", { sessionId: event.sessionId, status: event.status });
+  io.to(event.sessionId).emit("status", { sessionId: event.sessionId, status: event.status, qr: event.qr, pairingCode: event.pairingCode, phoneNumber: event.phoneNumber });
 });
 
-const PORT = Number(process.env.PORT || 3000);
+const PORT = Number(process.env.PORT || 3001);
 const HOST = process.env.HOST || "0.0.0.0";
 httpServer.listen(PORT, HOST, () => {
   logger.info({ PORT, HOST }, "Server running");

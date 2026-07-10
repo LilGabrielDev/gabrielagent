@@ -2,6 +2,7 @@ import { EventEmitter } from "node:events";
 
 export type SessionStatus =
   | "initializing"
+  | "connecting"
   | "generating_qr"
   | "waiting_qr"
   | "generating_pairing"

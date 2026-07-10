@@ -16,69 +16,94 @@ export class BaileysProvider extends WhatsAppProvider {
   private pairingCode: string | null = null;
   private phoneNumber: string | null = null;
   private versionPromise = fetchLatestBaileysVersion();
+  private reconnectTimer?: NodeJS.Timeout;
 
   constructor(sessionId: string, private sessionPath: string) {
     super(sessionId);
   }
 
   async initialize(): Promise<void> {
-    this.status = "initializing";
+    this.status = "connecting";
     this.emitEvent("status", {});
 
-    const { state, saveCreds } = await useMultiFileAuthState(this.sessionPath);
-    const { version } = await this.versionPromise;
-    const socketLogger = logger.child({ sessionId: this.sessionId, module: "baileys" });
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = undefined;
+    }
 
-    this.socket = makeWASocket({
-      version,
-      logger: socketLogger,
-      printQRInTerminal: false,
-      browser: ["Gabriel", "Chrome", "1.0.0"],
-      auth: {
-        creds: state.creds,
-        keys: makeCacheableSignalKeyStore(state.keys, socketLogger),
-      },
-      syncFullHistory: false,
-      markOnlineOnConnect: true,
-    });
+    try {
+      const { state, saveCreds } = await useMultiFileAuthState(this.sessionPath);
+      const { version } = await this.versionPromise;
+      const socketLogger = logger.child({ sessionId: this.sessionId, module: "baileys" });
 
-    this.socket.ev.on("creds.update", saveCreds);
+      this.socket = makeWASocket({
+        version,
+        logger: socketLogger,
+        printQRInTerminal: false,
+        browser: ["Gabriel", "Chrome", "1.0.0"],
+        auth: {
+          creds: state.creds,
+          keys: makeCacheableSignalKeyStore(state.keys, socketLogger),
+        },
+        syncFullHistory: false,
+        markOnlineOnConnect: true,
+      });
 
-    this.socket.ev.on("connection.update", async (update) => {
-      const { connection, lastDisconnect, qr } = update;
+      this.socket.ev.on("creds.update", saveCreds);
 
-      if (qr) {
-        this.status = "waiting_qr";
-        try {
-          this.qr = await QRCode.toDataURL(qr);
-          this.emitEvent("qr", { qr: this.qr });
-        } catch (err) {
-          logger.error({ err, sessionId: this.sessionId }, "Failed to generate QR DataURL");
+      this.socket.ev.on("connection.update", async (update) => {
+        const { connection, lastDisconnect, qr } = update;
+
+        if (qr) {
+          this.status = "waiting_qr";
+          try {
+            this.qr = await QRCode.toDataURL(qr);
+            this.emitEvent("qr", { qr: this.qr });
+          } catch (err) {
+            logger.error({ err, sessionId: this.sessionId }, "Failed to generate QR DataURL");
+          }
         }
-      }
 
-      if (connection === "open") {
-        this.status = "ready";
-        this.qr = null;
-        this.pairingCode = null;
-        this.emitEvent("ready", {});
-      }
-
-      if (connection === "close") {
-        const shouldReconnect = (lastDisconnect?.error as any)?.output?.statusCode !== DisconnectReason.loggedOut;
-        this.status = "disconnected";
-        this.emitEvent("disconnected", { error: lastDisconnect?.error?.message });
-        
-        if (shouldReconnect) {
-          this.initialize(); // Simple auto-reconnect
+        if (connection === "open") {
+          this.status = "authenticated";
+          this.emitEvent("authenticated", {});
+          this.status = "ready";
+          this.qr = null;
+          this.pairingCode = null;
+          this.emitEvent("ready", {});
         }
-      }
-    });
+
+        if (connection === "close") {
+          const reason = (lastDisconnect?.error as { output?: { statusCode?: number } } | undefined)?.output?.statusCode;
+          const shouldReconnect = reason !== DisconnectReason.loggedOut;
+          this.status = "disconnected";
+          this.socket = undefined;
+          this.emitEvent("disconnected", { error: lastDisconnect?.error?.message });
+
+          if (shouldReconnect) {
+            this.reconnectTimer = setTimeout(() => {
+              void this.initialize();
+            }, 2000);
+          }
+        }
+      });
+    } catch (error) {
+      this.status = "failed";
+      const message = error instanceof Error ? error.message : "Baileys initialization failed";
+      this.emitEvent("error", { error: message });
+      throw error;
+    }
   }
 
   async requestPairingCode(phoneNumber: string): Promise<string> {
-    if (!this.socket) throw new Error("Socket not initialized");
-    
+    if (!this.socket) {
+      await this.initialize();
+    }
+
+    if (!this.socket) {
+      throw new Error("Socket not initialized");
+    }
+
     this.status = "generating_pairing";
     this.phoneNumber = phoneNumber;
     this.emitEvent("status", { phoneNumber });
@@ -89,10 +114,11 @@ export class BaileysProvider extends WhatsAppProvider {
       this.status = "waiting_qr";
       this.emitEvent("pairing", { pairingCode: this.pairingCode });
       return this.pairingCode;
-    } catch (err: any) {
+    } catch (error) {
       this.status = "failed";
-      this.emitEvent("error", { error: err.message });
-      throw err;
+      const message = error instanceof Error ? error.message : "Failed to request pairing code";
+      this.emitEvent("error", { error: message });
+      throw error;
     }
   }
 
@@ -103,19 +129,37 @@ export class BaileysProvider extends WhatsAppProvider {
   }
 
   async logout(): Promise<void> {
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = undefined;
+    }
+
     if (this.socket) {
       await this.socket.logout();
-      this.status = "disconnected";
-      this.emitEvent("disconnected", {});
+      this.socket = undefined;
     }
+
+    this.status = "disconnected";
+    this.qr = null;
+    this.pairingCode = null;
+    this.emitEvent("disconnected", {});
   }
 
   async disconnect(): Promise<void> {
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = undefined;
+    }
+
     if (this.socket) {
       this.socket.end(undefined);
-      this.status = "disconnected";
-      this.emitEvent("disconnected", {});
+      this.socket = undefined;
     }
+
+    this.status = "disconnected";
+    this.qr = null;
+    this.pairingCode = null;
+    this.emitEvent("disconnected", {});
   }
 
   getStatus(): SessionStatus {
