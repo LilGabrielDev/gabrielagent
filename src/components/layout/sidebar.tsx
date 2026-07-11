@@ -90,7 +90,7 @@ const sections: NavSection[] = [
 ];
 
 export function Sidebar() {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? "";
   const [collapsed, setCollapsed] = useState(false);
 
   return (
