@@ -213,7 +213,7 @@ export async function getWhatsAppStatus(
     const status = mapRemoteStatus(remote.status, remote.connected, remote.qr);
     const qrDataUrl = await toQrDataUrl(remote.qr);
 
-    return updateLastStatus({
+    const next = updateLastStatus({
       status,
       qr: qrDataUrl,
       pairingCode: remote.pairingCode ? formatPairingCode(remote.pairingCode) : null,
@@ -221,6 +221,20 @@ export async function getWhatsAppStatus(
       sessionId: remote.sessionId || sessionId,
       message: statusMessage(status, lastStatus.mode, remote.status),
     });
+
+    // Persist session snapshot to frontend DB (best-effort)
+    void saveSessionToFrontendDB({
+      sessionId: next.sessionId,
+      status: next.status,
+      qr: remote.qr || null,
+      pairingCode: remote.pairingCode || null,
+      phoneNumber: next.phoneNumber,
+      mode: next.mode,
+    }).catch(() => {
+      /* ignore persistence errors */
+    });
+
+    return next;
   } catch (error) {
     logger.warn("[WhatsApp] Failed to fetch remote status", {
       error: error instanceof Error ? error.message : String(error),
@@ -256,7 +270,7 @@ export async function initWhatsApp(
     const status = mapRemoteStatus(remote.status || "waiting", false, remote.qr);
     const qrDataUrl = await toQrDataUrl(remote.qr);
 
-    return updateLastStatus({
+    const next = updateLastStatus({
       status,
       qr: qrDataUrl,
       pairingCode: null,
@@ -264,6 +278,17 @@ export async function initWhatsApp(
       sessionId: remote.sessionId || sessionId,
       message: statusMessage(status, "web", remote.status),
     });
+
+    void saveSessionToFrontendDB({
+      sessionId: next.sessionId,
+      status: next.status,
+      qr: remote.qr || null,
+      pairingCode: null,
+      phoneNumber: next.phoneNumber,
+      mode: next.mode,
+    }).catch(() => {});
+
+    return next;
   }
 
   const normalizedPhoneNumber = phoneNumber ? normalizePhoneNumber(phoneNumber) : "";
@@ -284,7 +309,7 @@ export async function initWhatsApp(
     throw new Error(remote.error || "WhatsApp service did not return a pairing code");
   }
 
-  return updateLastStatus({
+  const nextPair = updateLastStatus({
     status: mapRemoteStatus(remote.status || "waiting", false, remote.qr),
     pairingCode: formatPairingCode(pairingCode),
     qr: await toQrDataUrl(remote.qr),
@@ -293,6 +318,17 @@ export async function initWhatsApp(
     sessionId: remote.sessionId || sessionId,
     message: "Enter the pairing code in WhatsApp Linked Devices",
   });
+
+  void saveSessionToFrontendDB({
+    sessionId: nextPair.sessionId,
+    status: nextPair.status,
+    qr: remote.qr || null,
+    pairingCode: pairingCode,
+    phoneNumber: nextPair.phoneNumber,
+    mode: nextPair.mode,
+  }).catch(() => {});
+
+  return nextPair;
 }
 
 export async function disconnectWhatsApp(
@@ -336,4 +372,16 @@ export async function sendWhatsAppMessage(): Promise<boolean> {
 
 export function isWhatsAppServiceConfigured(): boolean {
   return Boolean(getServiceBaseUrl());
+}
+
+async function saveSessionToFrontendDB(payload: Partial<RemoteStatusResponse> & { sessionId: string }) {
+  try {
+    await fetch('/api/sessions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+  } catch (err) {
+    // silent: persistence is best-effort and should not break frontend flows
+  }
 }
