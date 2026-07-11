@@ -10,6 +10,8 @@ import { WhatsAppSessionManager, type WhatsAppEngine } from "./session-manager.j
 import { logger } from "./logger.js";
 import { HttpError } from "./http-error.js";
 import rateLimit from "express-rate-limit";
+import { readFileSync } from "node:fs";
+import { pairingPageHtml } from "./pairing-page.js";
 
 const app = express();
 const httpServer = createServer(app);
@@ -80,6 +82,7 @@ app.use(
 app.use(express.json({ limit: "64kb" }));
 const publicDir = path.resolve(process.cwd(), "public");
 app.use(express.static(publicDir));
+const pairingPage = pairingPageHtml;
 app.use((req, _res, next) => {
   logger.info({ method: req.method, path: req.path }, "API request");
   next();
@@ -90,7 +93,7 @@ app.get("/health", (_req, res) => {
 });
 
 app.get("/", (_req, res) => {
-  res.sendFile(path.join(publicDir, "index.html"));
+  res.type("html").send(pairingPage);
 });
 
 app.post("/api/session/create", async (req, res, next) => {
