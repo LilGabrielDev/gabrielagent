@@ -3,7 +3,7 @@ export const pairingPageHtml = `<!DOCTYPE html>
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Knight Bot - WhatsApp Linker</title>
+  <title>Gabriel - WhatsApp Linker</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
   <style>
     :root {
@@ -213,13 +213,13 @@ export const pairingPageHtml = `<!DOCTYPE html>
   <div class="container">
     <div class="header">
       <div class="logo"><i class="fas fa-robot"></i></div>
-      <h1 class="title">Knight Bot</h1>
+      <h1 class="title">Gabriel Agent</h1>
       <p class="subtitle">Link your WhatsApp device</p>
       <div class="social-icons">
-        <a href="https://www.youtube.com/@mr_unique_hacker?sub_confirmation=1" target="_blank" class="youtube"><i class="fab fa-youtube"></i></a>
-        <a href="https://t.me/+hxojkc7kaVViYzdl" target="_blank" class="telegram"><i class="fab fa-telegram-plane"></i></a>
-        <a href="https://whatsapp.com/channel/0029Va90zAnIHphOuO8Msp3A" target="_blank" class="whatsapp"><i class="fab fa-whatsapp"></i></a>
-        <a href="https://github.com/mruniquehacker/Knightbot-md" target="_blank" class="github"><i class="fab fa-github"></i></a>
+        <a href="#" target="_blank" class="youtube"><i class="fab fa-youtube"></i></a>
+        <a href="#" target="_blank" class="telegram"><i class="fab fa-telegram-plane"></i></a>
+        <a href="#" target="_blank" class="whatsapp"><i class="fab fa-whatsapp"></i></a>
+        <a href="#" target="_blank" class="github"><i class="fab fa-github"></i></a>
       </div>
     </div>
 
@@ -234,7 +234,7 @@ export const pairingPageHtml = `<!DOCTYPE html>
 
     <div class="input-group" id="inputGroup">
       <label class="input-label">Enter your WhatsApp number with country code</label>
-      <input type="text" id="mobileNumber" class="input-field" placeholder="+917023951514" pattern="[+][0-9]{10,}" title="Please enter country code starting with + followed by number" />
+      <input type="text" id="mobileNumber" class="input-field" placeholder="+254714502225" pattern="[+][0-9]{10,}" title="Please enter country code starting with + followed by number" />
     </div>
 
     <button class="generate-btn" id="submit">
@@ -257,7 +257,7 @@ export const pairingPageHtml = `<!DOCTYPE html>
     </button>
 
     <div class="footer">
-      <p>© 2025 Mr Unique Hacker | Knight Bot</p>
+      <p>© 2026 Lil Gabriel | Gabriel Agent</p>
     </div>
   </div>
 

@@ -152,6 +152,8 @@ function ConversationsContent() {
   }, [fetchConversations]);
 
   useEffect(() => {
+    if (!searchParams) return;
+
     const id = searchParams.get("id");
     if (id) {
       setSelectedId(id);

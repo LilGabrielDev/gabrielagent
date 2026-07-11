@@ -1,0 +1,19 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "vercel-build-run",
+			"type": "shell",
+			"command": "cmd /d /c \"cd /d c:\\Users\\lilga\\OneDrive\\Desktop\\Gabrielagent && npm.cmd run vercel-build\"",
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "vercel-build-cmd",
+			"type": "shell",
+			"command": "cmd /d /c \"cd /d c:\\Users\\lilga\\OneDrive\\Desktop\\Gabrielagent & npm.cmd run vercel-build\"",
+			"problemMatcher": [],
+			"group": "test"
+		}
+	]
+}

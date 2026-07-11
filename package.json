@@ -49,6 +49,8 @@
     "jsonwebtoken": "^9.0.3",
     "lucide-react": "^1.7.0",
     "mailparser": "^3.9.6",
+    "mongoose": "^7.7.0",
+    "mongoose": "^9.7.4",
     "next": "16.2.2",
     "nodemailer": "^8.0.4",
     "openai": "^6.33.0",
