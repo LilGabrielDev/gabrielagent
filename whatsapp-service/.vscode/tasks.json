@@ -1,0 +1,187 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "git-status-check",
+			"type": "shell",
+			"command": "git status --short",
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "npm-test",
+			"type": "shell",
+			"command": "npm test",
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "npm-cmd-test",
+			"type": "shell",
+			"command": "cmd /d /c \"npm.cmd test\"",
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "npm-build",
+			"type": "shell",
+			"command": "cmd /d /c \"npm.cmd run build\"",
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "rebuild-and-test",
+			"type": "shell",
+			"command": "cmd /d /c \"npm.cmd run build && npm.cmd test\"",
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "rebuild-and-test",
+			"type": "shell",
+			"command": "cmd /d /c \"npm.cmd run build\" && cmd /d /c \"npm.cmd test\"",
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "npm-build",
+			"type": "shell",
+			"command": "cmd /d /c \"npm.cmd run build\"",
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "npm-test",
+			"type": "shell",
+			"command": "cmd /d /c \"npm.cmd test\"",
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "verify-tests-cmd",
+			"type": "shell",
+			"command": "cmd /d /c \"npm.cmd test\"",
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "verify-tests-cmd",
+			"type": "shell",
+			"command": "cmd /d /c \"npm.cmd test\"",
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "verify-tests-cmd",
+			"type": "shell",
+			"command": "cmd /d /c \"npm.cmd test\"",
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "git-status-check",
+			"type": "shell",
+			"command": "git status --short",
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "git-remote-info",
+			"type": "shell",
+			"command": "cmd /d /c \"git branch --show-current && git remote -v\"",
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "git-remote-info",
+			"type": "shell",
+			"command": "cmd /d /c \"git branch --show-current\"",
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "git-branch",
+			"type": "shell",
+			"command": "git branch --show-current",
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "git-remote",
+			"type": "shell",
+			"command": "git remote -v",
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "git-commit",
+			"type": "shell",
+			"command": "cmd /d /c \"cd /d c:\\Users\\lilga\\OneDrive\\Desktop\\Gabrielagent\\whatsapp-service && if exist .vscode rmdir /s /q .vscode && git config user.name \"GitHub Copilot\" && git config user.email \"copilot@github.com\" && git add package.json src/pairing-page.ts src/server.ts test/pairing-flow.test.js && git commit -m \"Add pairing page and direct pair/QR flows\"\"",
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "git-push-check",
+			"type": "shell",
+			"command": "git status --short && git branch -vv",
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "git-status-simple",
+			"type": "shell",
+			"command": "git status --short",
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "commit-and-push",
+			"type": "shell",
+			"command": "cmd /d /c \"cd /d c:\\Users\\lilga\\OneDrive\\Desktop\\Gabrielagent\\whatsapp-service && if exist .vscode rmdir /s /q .vscode && git config user.name \\\"GitHub Copilot\\\" && git config user.email \\\"copilot@github.com\\\" && git add package.json src/pairing-page.ts src/server.ts test/pairing-flow.test.js && git commit -m \\\"Add pairing page and direct pair/QR flows\\\" && git push origin main\"",
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "git-state",
+			"type": "shell",
+			"command": "git status --short && git log -1 --oneline --decorate",
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "git-push-url",
+			"type": "shell",
+			"command": "cmd /d /c \"cd /d c:\\Users\\lilga\\OneDrive\\Desktop\\Gabrielagent\\whatsapp-service && git push https://github.com/LilGabrielDev/gabrielagent.git main\"",
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "commit-and-push-all",
+			"type": "shell",
+			"command": "cmd /d /c \"cd /d c:\\Users\\lilga\\OneDrive\\Desktop\\Gabrielagent\\whatsapp-service & git add -A & (git commit -m \"Add pairing page and direct pair/QR flows\" || echo NO_COMMIT) & git push --all origin & git push --tags origin\"",
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "commit-and-push-all",
+			"type": "shell",
+			"command": "cmd /d /c \"cd /d c:\\Users\\lilga\\OneDrive\\Desktop\\Gabrielagent\\whatsapp-service & git add -A & (git commit -m \\\"Add pairing page and direct pair/QR flows\\\" || echo NO_COMMIT) & git push --all origin & git push --tags origin\"",
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "git-status-after-push",
+			"type": "shell",
+			"command": "cmd /d /c \"cd /d c:\\Users\\lilga\\OneDrive\\Desktop\\Gabrielagent\\whatsapp-service & git status --short & git branch -vv & git remote -v\"",
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "git-push-all",
+			"type": "shell",
+			"command": "cmd /d /c \"cd /d c:\\Users\\lilga\\OneDrive\\Desktop\\Gabrielagent\\whatsapp-service & git add -A & (git commit -m \\\"Add pairing page and direct pair/QR flows\\\" || echo NO_COMMIT) & git push --all origin & git push --tags origin\"",
+			"problemMatcher": [],
+			"group": "test"
+		}
+	]
+}

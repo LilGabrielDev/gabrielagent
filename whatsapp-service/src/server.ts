@@ -82,6 +82,21 @@ app.use(express.json({ limit: "64kb" }));
 const publicDir = path.resolve(process.cwd(), "public");
 app.use(express.static(publicDir, { index: false }));
 const pairingPage = pairingPageHtml;
+
+const createSessionId = (prefix: string) => `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
+const waitForSessionQr = async (sessionId: string, timeoutMs = 10000) => {
+  const startedAt = Date.now();
+  let qr = sessions.getQr(sessionId);
+
+  while (!qr && Date.now() - startedAt < timeoutMs) {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    qr = sessions.getQr(sessionId);
+  }
+
+  return qr;
+};
+
 app.use((req, _res, next) => {
   logger.info({ method: req.method, path: req.path }, "API request");
   next();
@@ -93,6 +108,58 @@ app.get("/health", (_req, res) => {
 
 app.get("/", (_req, res) => {
   res.type("html").send(pairingPage);
+});
+
+app.get("/pair", async (req, res, next) => {
+  try {
+    const rawNumber = typeof req.query.number === "string" ? req.query.number : "";
+    const normalizedNumber = rawNumber.replace(/[^0-9+]/g, "").replace(/^00/, "").trim();
+    const phoneNumber = normalizedNumber.startsWith("+") ? normalizedNumber : `+${normalizedNumber}`;
+
+    if (!/^\+[0-9]{8,15}$/.test(phoneNumber)) {
+      throw new HttpError(400, "Please enter a valid phone number with country code");
+    }
+
+    const sessionId = typeof req.query.sessionId === "string" && req.query.sessionId.trim()
+      ? req.query.sessionId.trim()
+      : createSessionId("pair");
+
+    const snapshot = sessions.getSnapshot(sessionId);
+    if (!snapshot) {
+      await sessions.createSession(sessionId, "baileys", phoneNumber);
+    } else {
+      await sessions.createSession(sessionId, "baileys", phoneNumber);
+    }
+
+    const pairingCode = await sessions.pair(sessionId, phoneNumber);
+    res.json({ success: true, sessionId, code: pairingCode, status: sessions.getStatus(sessionId) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/qr", async (req, res, next) => {
+  try {
+    const sessionId = typeof req.query.sessionId === "string" && req.query.sessionId.trim()
+      ? req.query.sessionId.trim()
+      : createSessionId("qr");
+
+    const snapshot = sessions.getSnapshot(sessionId);
+    if (!snapshot) {
+      await sessions.createSession(sessionId, "baileys");
+    }
+
+    const qr = await waitForSessionQr(sessionId, 10000);
+    res.json({
+      success: true,
+      sessionId,
+      qr,
+      status: sessions.getStatus(sessionId),
+      instructions: ["Open WhatsApp", "Tap Link a device", "Scan the QR code"],
+    });
+  } catch (error) {
+    next(error);
+  }
 });
 
 app.post("/api/session/create", async (req, res, next) => {
@@ -303,11 +370,16 @@ app.post("/api/whatsapp/reconnect/:sessionId", async (req, res, next) => {
   }
 });
 
-app.use((error: unknown, req: express.Request, res: express.Response) => {
+app.use((error: unknown, req: express.Request, res: express.Response, next: express.NextFunction) => {
   const status = error instanceof HttpError ? error.statusCode : 500;
   const code = error instanceof HttpError ? error.code ?? "internal_error" : "internal_error";
   const message = error instanceof Error ? error.message : "Internal Server Error";
   logger.error({ err: error, method: req.method, path: req.path }, "Request failed");
+  if (res.headersSent) {
+    next(error);
+    return;
+  }
+
   res.status(status).json({
     success: false,
     message,
