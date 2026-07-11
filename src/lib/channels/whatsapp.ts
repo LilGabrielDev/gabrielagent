@@ -28,6 +28,7 @@ interface RemoteStatusResponse {
   phoneNumber?: string | null;
   pairingCode?: string | null;
   qr?: string | null;
+  mode?: WhatsAppMode;
   error?: string;
 }
 
