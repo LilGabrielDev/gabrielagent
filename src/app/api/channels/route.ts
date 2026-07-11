@@ -4,7 +4,7 @@ import { logger } from "@/lib/logger";
 import { requireAuth, isAuthenticated } from "@/lib/route-auth";
 import { getWhatsAppStatus, isWhatsAppServiceConfigured } from "@/lib/channels/whatsapp";
 
-const CHANNEL_TYPES = ["whatsapp", "email", "phone", "sms", "telegram"];
+const CHANNEL_TYPES = ["whatsapp", "email", "phone", "sms", "telegram", "widget"];
 
 export async function GET(request: NextRequest) {
   const auth = await requireAuth(request, "channels:read");

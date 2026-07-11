@@ -4,7 +4,7 @@ import { logger } from "@/lib/logger";
 import { requireAuth, isAuthenticated } from "@/lib/route-auth";
 import { disconnectWhatsApp, getWhatsAppStatus } from "@/lib/channels/whatsapp";
 
-const CHANNEL_TYPES = ["whatsapp", "email", "phone", "sms", "telegram"];
+const CHANNEL_TYPES = ["whatsapp", "email", "phone", "sms", "telegram", "widget"];
 
 type RouteContext = { params: Promise<{ type: string }> };
 

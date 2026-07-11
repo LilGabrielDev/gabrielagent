@@ -68,6 +68,7 @@ const sections: NavSection[] = [
     title: "Channels",
     items: [
       { name: "Channels", href: "/channels", icon: Radio },
+      { name: "Live Chat Widget", href: "/widget", icon: MessageSquare },
       { name: "Webhooks", href: "/webhooks", icon: Webhook },
     ],
   },
