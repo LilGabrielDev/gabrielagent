@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { MongoClient } from 'mongodb';
+import mongoose, { Schema, model, models } from 'mongoose';
 
 const MONGODB_URI = process.env.MONGODB_URI;
 const DB_NAME = process.env.MONGODB_DB || 'gabrielagent';
@@ -8,15 +8,21 @@ if (!MONGODB_URI) {
   console.error('MONGODB_URI is not configured for session storage API');
 }
 
-let cachedClient: MongoClient | null = null;
+const sessionSchema = new Schema(
+  {
+    sessionId: { type: String, required: true, unique: true },
+    payload: { type: Schema.Types.Mixed, default: {} },
+    updatedAt: { type: Date, default: Date.now },
+  },
+  { strict: false }
+);
 
-async function getClient() {
-  if (cachedClient) return cachedClient;
+const WhatsAppSession = models.WhatsAppSession || model('WhatsAppSession', sessionSchema);
+
+async function connectToDatabase() {
+  if (mongoose.connection.readyState === 1) return;
   if (!MONGODB_URI) throw new Error('MONGODB_URI not set');
-  const client = new MongoClient(MONGODB_URI);
-  await client.connect();
-  cachedClient = client;
-  return client;
+  await mongoose.connect(MONGODB_URI, { dbName: DB_NAME });
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -31,15 +37,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const client = await getClient();
-    const db = client.db(DB_NAME);
-    const col = db.collection('whatsapp_sessions');
+    await connectToDatabase();
 
-    const filter = { sessionId: payload.sessionId };
-    const update = { $set: { ...payload, updatedAt: new Date() } };
-    const opts = { upsert: true };
+    await WhatsAppSession.findOneAndUpdate(
+      { sessionId: payload.sessionId },
+      {
+        payload,
+        updatedAt: new Date(),
+      },
+      {
+        upsert: true,
+        new: true,
+        setDefaultsOnInsert: true,
+      }
+    ).exec();
 
-    await col.updateOne(filter, update, opts);
     return res.status(200).json({ success: true });
   } catch (err) {
     console.error('Session save failed', err);
