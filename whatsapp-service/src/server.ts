@@ -10,7 +10,6 @@ import { WhatsAppSessionManager, type WhatsAppEngine } from "./session-manager.j
 import { logger } from "./logger.js";
 import { HttpError } from "./http-error.js";
 import rateLimit from "express-rate-limit";
-import { readFileSync } from "node:fs";
 import { pairingPageHtml } from "./pairing-page.js";
 
 const app = express();
@@ -81,7 +80,7 @@ app.use(
 
 app.use(express.json({ limit: "64kb" }));
 const publicDir = path.resolve(process.cwd(), "public");
-app.use(express.static(publicDir));
+app.use(express.static(publicDir, { index: false }));
 const pairingPage = pairingPageHtml;
 app.use((req, _res, next) => {
   logger.info({ method: req.method, path: req.path }, "API request");
@@ -150,6 +149,45 @@ app.post("/api/session/qr", async (req, res, next) => {
     }
 
     res.json({ success: true, sessionId: body.sessionId, qr: sessions.getQr(body.sessionId), status: sessions.getStatus(body.sessionId) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/session/qr", async (req, res, next) => {
+  try {
+    const sessionId = typeof req.query.sessionId === "string" ? req.query.sessionId : "";
+    const parsed = sessionIdSchema.safeParse(sessionId);
+    if (!parsed.success) {
+      throw new HttpError(400, "A valid sessionId query parameter is required");
+    }
+
+    const snapshot = sessions.getSnapshot(parsed.data);
+    if (!snapshot) {
+      await sessions.createSession(parsed.data, "baileys");
+    }
+
+    res.json({ success: true, sessionId: parsed.data, qr: sessions.getQr(parsed.data), status: sessions.getStatus(parsed.data) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/session/status", async (req, res, next) => {
+  try {
+    const sessionId = typeof req.query.sessionId === "string" ? req.query.sessionId : "";
+    const parsed = sessionIdSchema.safeParse(sessionId);
+    if (!parsed.success) {
+      throw new HttpError(400, "A valid sessionId query parameter is required");
+    }
+
+    const snapshot = sessions.getSnapshot(parsed.data);
+    if (!snapshot) {
+      res.status(404).json({ success: false, message: "Session not found", error: "Session not found", code: "SESSION_NOT_FOUND" });
+      return;
+    }
+
+    res.json({ success: true, sessionId: parsed.data, status: snapshot.status, qr: snapshot.qr, pairingCode: snapshot.pairingCode, phoneNumber: snapshot.phoneNumber });
   } catch (error) {
     next(error);
   }

@@ -296,6 +296,8 @@ export const pairingPageHtml = `<!DOCTYPE html>
 
     let currentSessionId = null;
     let currentPhoneNumber = '';
+    let socket = null;
+    let initializationPromise = null;
 
     function setStatus(message, tone = 'info') {
       statusText.textContent = message;
@@ -342,21 +344,80 @@ export const pairingPageHtml = `<!DOCTYPE html>
       currentSessionId = null;
       currentPhoneNumber = '';
       phoneInput.value = '';
+      if (socket) {
+        socket.disconnect();
+        socket = null;
+      }
+      initializationPromise = null;
     }
 
     async function createSession(phoneNumber) {
+      const body = { sessionId: 'pairing_' + Date.now(), engine: 'baileys' };
+      if (phoneNumber) {
+        body.phoneNumber = phoneNumber;
+      }
+
       const response = await fetch(apiBaseUrl + '/api/session/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId: 'pairing_' + Date.now(), engine: 'baileys', phoneNumber })
+        body: JSON.stringify(body)
       });
       const data = await response.json();
       if (!data.success) {
         throw new Error(data.message || 'Unable to create a session');
       }
-      currentPhoneNumber = phoneNumber;
+      currentPhoneNumber = phoneNumber || '';
       setSessionId(data.sessionId);
       return data.sessionId;
+    }
+
+    function setupSocket(sessionId) {
+      if (socket) {
+        socket.disconnect();
+      }
+
+      socket = io(apiBaseUrl, { query: { sessionId } });
+      socket.on('connect', function() {
+        setStatus('Connected to live updates', 'info');
+      });
+      socket.on('qr', function(data) {
+        if (data.sessionId === sessionId && data.qr) {
+          showQr(data.qr);
+          setStatus('QR is ready — scan it with WhatsApp', 'warn');
+        }
+      });
+      socket.on('pairing', function(data) {
+        if (data.sessionId === sessionId && data.pairingCode) {
+          showPairingCode(data.pairingCode);
+          setStatus('Pairing code ready', 'success');
+        }
+      });
+      socket.on('authenticated', function() {
+        hideQr();
+        setStatus('Authenticated successfully', 'success');
+      });
+      socket.on('ready', function() {
+        hideQr();
+        setStatus('WhatsApp is ready', 'success');
+      });
+      socket.on('status', function(data) {
+        if (data.sessionId !== sessionId) return;
+        if (data.qr) {
+          showQr(data.qr);
+          setStatus('QR is ready — scan it with WhatsApp', 'warn');
+        } else if (data.pairingCode) {
+          showPairingCode(data.pairingCode);
+          setStatus('Pairing code ready', 'success');
+        } else if (data.status === 'connecting' || data.status === 'initializing') {
+          setStatus('Preparing the WhatsApp session...', 'info');
+        }
+      });
+      socket.on('disconnected', function() {
+        setStatus('Session disconnected', 'error');
+      });
+      socket.on('error', function(data) {
+        setStatus(data.error || 'Connection error', 'error');
+      });
     }
 
     async function requestPairingCode(sessionId, phoneNumber) {
@@ -372,8 +433,8 @@ export const pairingPageHtml = `<!DOCTYPE html>
       return data.pairingCode;
     }
 
-    async function pollSession(sessionId) {
-      const deadline = Date.now() + 30000;
+    async function pollSession(sessionId, timeoutMs = 30000) {
+      const deadline = Date.now() + timeoutMs;
       while (Date.now() < deadline) {
         const response = await fetch(apiBaseUrl + '/api/session/status/' + encodeURIComponent(sessionId));
         const data = await response.json();
@@ -386,19 +447,43 @@ export const pairingPageHtml = `<!DOCTYPE html>
 
         if (data.pairingCode) {
           showPairingCode(data.pairingCode);
-          setStatus('Pairing code is ready', 'success');
+          setStatus('Pairing code ready', 'success');
           return;
         }
 
         if (data.status === 'ready' || data.status === 'authenticated') {
-          setStatus('Your WhatsApp session is ready', 'success');
+          hideQr();
+          setStatus('WhatsApp is ready', 'success');
           return;
         }
 
         await new Promise((resolve) => setTimeout(resolve, 1500));
       }
+      setStatus('The backend is still preparing the QR or code. Please wait a moment and try again.', 'warn');
+    }
 
-      setStatus('The backend did not return a code or QR yet. Please try again.', 'error');
+    async function initializeSession() {
+      if (initializationPromise) {
+        return initializationPromise;
+      }
+
+      initializationPromise = (async () => {
+        startButton.disabled = true;
+        startButton.textContent = 'Preparing...';
+        setStatus('Preparing the WhatsApp session...', 'info');
+
+        try {
+          const sessionId = await createSession();
+          setupSocket(sessionId);
+          await pollSession(sessionId, 25000);
+          return sessionId;
+        } finally {
+          startButton.disabled = false;
+          startButton.textContent = 'Request pairing code';
+        }
+      })();
+
+      return initializationPromise;
     }
 
     async function startPairing() {
@@ -409,34 +494,40 @@ export const pairingPageHtml = `<!DOCTYPE html>
       }
 
       startButton.disabled = true;
-      startButton.textContent = 'Preparing...';
-      setStatus('Preparing the WhatsApp session...', 'info');
+      startButton.textContent = 'Loading...';
+      setStatus('Requesting the pairing code...', 'info');
 
       try {
-        const sessionId = await createSession(phoneNumber);
+        const sessionId = currentSessionId || await initializeSession();
         const pairingCode = await requestPairingCode(sessionId, phoneNumber);
         if (pairingCode) {
           showPairingCode(pairingCode);
+          setStatus('Pairing code ready', 'success');
         }
-        await pollSession(sessionId);
       } catch (error) {
         const message = error && error.message ? error.message : 'Unable to start pairing';
         setStatus(message, 'error');
       } finally {
         startButton.disabled = false;
-        startButton.textContent = 'Start pairing';
+        startButton.textContent = 'Request pairing code';
       }
     }
 
-    startButton.addEventListener('click', startPairing);
+    startButton.addEventListener('click', function() {
+      void startPairing();
+    });
     resetButton.addEventListener('click', function() {
       resetView();
     });
     phoneInput.addEventListener('keydown', function(event) {
       if (event.key === 'Enter') {
         event.preventDefault();
-        startPairing();
+        void startPairing();
       }
+    });
+
+    document.addEventListener('DOMContentLoaded', function() {
+      void initializeSession();
     });
   </script>
 </body>

@@ -17,13 +17,17 @@ export class BaileysProvider extends WhatsAppProvider {
   private phoneNumber: string | null = null;
   private versionPromise = fetchLatestBaileysVersion();
   private reconnectTimer?: NodeJS.Timeout;
+  private lastQrPayload: string | null = null;
 
   constructor(sessionId: string, private sessionPath: string) {
     super(sessionId);
   }
 
   async initialize(): Promise<void> {
-    this.status = "connecting";
+    this.status = "generating_qr";
+    this.qr = null;
+    this.pairingCode = null;
+    this.lastQrPayload = null;
     this.emitEvent("status", {});
 
     if (this.reconnectTimer) {
@@ -57,8 +61,12 @@ export class BaileysProvider extends WhatsAppProvider {
         if (qr) {
           this.status = "waiting_qr";
           try {
-            this.qr = await QRCode.toDataURL(qr);
-            this.emitEvent("qr", { qr: this.qr });
+            const qrDataUrl = await QRCode.toDataURL(qr);
+            if (this.lastQrPayload !== qrDataUrl) {
+              this.lastQrPayload = qrDataUrl;
+              this.qr = qrDataUrl;
+              this.emitEvent("qr", { qr: this.qr });
+            }
           } catch (err) {
             logger.error({ err, sessionId: this.sessionId }, "Failed to generate QR DataURL");
           }
@@ -70,6 +78,7 @@ export class BaileysProvider extends WhatsAppProvider {
           this.status = "ready";
           this.qr = null;
           this.pairingCode = null;
+          this.lastQrPayload = null;
           this.emitEvent("ready", {});
         }
 
@@ -109,6 +118,7 @@ export class BaileysProvider extends WhatsAppProvider {
     this.emitEvent("status", { phoneNumber });
 
     try {
+      await new Promise((resolve) => setTimeout(resolve, 3000));
       const code = await this.socket.requestPairingCode(phoneNumber);
       this.pairingCode = this.formatPairingCode(code);
       this.status = "waiting_qr";
