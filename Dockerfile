@@ -6,8 +6,8 @@ RUN npm ci
 
 COPY whatsapp-service/tsconfig.json ./
 COPY whatsapp-service/src ./src
-COPY whatsapp-service/public ./public
 COPY whatsapp-service/index.js ./index.js
+RUN mkdir -p ./public
 
 RUN npm run build
 
@@ -22,10 +22,9 @@ RUN npm ci --omit=dev
 
 COPY --from=build /app/whatsapp-service/dist ./dist
 COPY --from=build /app/whatsapp-service/index.js ./index.js
-COPY --from=build /app/whatsapp-service/public ./public
 COPY --from=build /app/whatsapp-service/package.json ./package.json
 COPY --from=build /app/whatsapp-service/tsconfig.json ./tsconfig.json
 
-RUN mkdir -p /app/whatsapp-service/sessions
+RUN mkdir -p /app/whatsapp-service/public /app/whatsapp-service/sessions
 EXPOSE 3001
 CMD ["node", "index.js"]

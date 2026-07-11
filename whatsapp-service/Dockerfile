@@ -18,6 +18,7 @@ COPY package*.json ./
 RUN npm install
 
 COPY . .
+RUN mkdir -p ./public
 
 # Ensure we use the installed chromium
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
