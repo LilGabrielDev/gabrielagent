@@ -1,1 +1,24 @@
-src/pages/api/sessions.ts(2,49): error TS2307: Cannot find module 'mongoose' or its corresponding type declarations.
+
+> gabriel@0.1.0 vercel-build
+> node ./scripts/prisma-optional.js && next build
+
+Skipping `prisma generate` because no DATABASE_URL found and PRISMA_FORCE not set.
+▲ Next.js 16.2.2 (Turbopack)
+- Environments: .env
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 16.3s
+  Running TypeScript ...
+Failed to type check.
+
+./src/app/api/channels/route.ts:17:28
+Type error: 'tenantPrisma.channel' is of type 'unknown'.
+
+  [90m15 |[0m
+  [90m16 |[0m   [36mtry[0m {
+[31m[1m>[0m [90m17 |[0m     [36mconst[0m channels = [36mawait[0m tenantPrisma.channel.findMany({
+  [90m   |[0m                            [31m[1m^[0m
+  [90m18 |[0m       where: { tenantId },
+  [90m19 |[0m       orderBy: { [36mtype[0m: [32m"asc"[0m },
+  [90m20 |[0m     });
+Next.js build worker exited with code: 1 and signal: null
