@@ -11,7 +11,6 @@ export async function GET(request: NextRequest) {
   const auth = await requireAuth(request, "channels:read");
   if (!isAuthenticated(auth)) return auth;
   const tenantId = auth.tenantId;
-  if (!isAuthenticated(auth)) return auth;
 
   try {
     const channels = await tenantPrisma.channel.findMany({
@@ -67,7 +66,6 @@ export async function POST(request: NextRequest) {
   const auth = await requireAuth(request, "channels:update");
   if (!isAuthenticated(auth)) return auth;
   const tenantId = auth.tenantId;
-  if (!isAuthenticated(auth)) return auth;
 
   try {
     const body = await request.json();

@@ -26,9 +26,10 @@ export async function GET(request: NextRequest) {
     }
 
     if (search && search.trim()) {
+      const q = search.trim();
       where.OR = [
-        { customerName: { contains: search.trim(), mode: "insensitive" } },
-        { customerContact: { contains: search.trim(), mode: "insensitive" } },
+        { customerName: { contains: q, mode: "insensitive" } },
+        { customerContact: { contains: q, mode: "insensitive" } },
       ];
     }
 

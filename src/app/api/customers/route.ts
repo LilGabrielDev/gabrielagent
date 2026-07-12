@@ -17,10 +17,11 @@ export async function GET(request: NextRequest) {
     const where: Record<string, unknown> = {};
 
     if (search && search.trim()) {
+      const q = search.trim();
       where.OR = [
-        { name: { contains: search.trim(), mode: "insensitive" } },
-        { email: { contains: search.trim(), mode: "insensitive" } },
-        { phone: { contains: search.trim(), mode: "insensitive" } },
+        { name: { contains: q, mode: "insensitive" } },
+        { email: { contains: q, mode: "insensitive" } },
+        { phone: { contains: q, mode: "insensitive" } },
       ];
     }
 
@@ -45,7 +46,12 @@ export async function GET(request: NextRequest) {
       prisma.customer.count({ where }),
     ]);
 
-    return NextResponse.json(paginatedResponse(customers, total, page, limit));
+    const result = paginatedResponse(customers, total, page, limit);
+    // Return in flat format expected by frontend
+    return NextResponse.json({
+      customers: result.data,
+      pagination: result.pagination,
+    });
   } catch (error) {
     logger.error("Failed to fetch customers:", error);
     return NextResponse.json(

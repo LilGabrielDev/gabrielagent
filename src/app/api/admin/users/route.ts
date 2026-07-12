@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const validRoles = ["admin", "editor", "viewer"];
+    const validRoles = ["admin", "supervisor", "agent", "viewer"];
     const userRole = validRoles.includes(role) ? role : "viewer";
 
     const hashed = await hashPassword(password);

@@ -133,7 +133,8 @@ export default function AdminPage() {
       const res = await fetch("/api/admin/users");
       if (res.ok) {
         const data = await res.json();
-        setUsers(data);
+        // The users API returns paginatedResponse shape { data: [...], pagination: {...} }
+        setUsers(Array.isArray(data) ? data : (data?.data ?? []));
       }
     } catch (err) {
       console.error("Failed to fetch users:", err);
@@ -148,7 +149,8 @@ export default function AdminPage() {
       const res = await fetch("/api/admin/api-keys");
       if (res.ok) {
         const data = await res.json();
-        setApiKeys(data);
+        // The api-keys API returns paginatedResponse shape { data: [...], pagination: {...} }
+        setApiKeys(Array.isArray(data) ? data : (data?.data ?? []));
       }
     } catch (err) {
       console.error("Failed to fetch API keys:", err);
@@ -704,7 +706,8 @@ export default function AdminPage() {
                   className="w-full px-3 py-2 text-sm border border-gabriel-border rounded-lg focus:outline-none focus:ring-2 focus:ring-gabriel-primary/30 focus:border-gabriel-primary bg-gabriel-surface text-gabriel-text"
                 >
                   <option value="admin">Admin - Full access</option>
-                  <option value="editor">Editor - Can edit content</option>
+                  <option value="supervisor">Supervisor - Manage teams & content</option>
+                  <option value="agent">Agent - Handle conversations</option>
                   <option value="viewer">Viewer - Read-only access</option>
                 </select>
               </div>

@@ -37,21 +37,6 @@ export function maskSettingsSecrets<T extends Record<string, unknown>>(
   return masked;
 }
 
-/**
- * Escape HTML entities to prevent XSS.
- */
-export function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#x27;");
-}
-
-/**
- * Sanitize email subject to prevent CRLF header injection.
- */
 export function sanitizeEmailSubject(subject: string): string {
   return subject.replace(/[\r\n]/g, " ").trim();
 }

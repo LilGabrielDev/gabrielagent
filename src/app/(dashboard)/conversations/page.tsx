@@ -123,7 +123,8 @@ function ConversationsContent() {
       const res = await fetch(`/api/conversations?${params.toString()}`);
       if (!res.ok) throw new Error("Failed to load conversations");
       const data = await res.json();
-      setConversations(data);
+      // The API returns paginatedResponse shape { data: [...], pagination: {...} }
+      setConversations(Array.isArray(data) ? data : (data?.data ?? []));
     } catch (error) {
       console.error("Failed to fetch conversations:", error);
       setFetchError("Failed to load conversations. Please try refreshing the page.");
