@@ -464,10 +464,24 @@ export default function WidgetPage() {
     try {
       setFetchError(null);
       const res = await fetch("/api/channels/widget");
-      if (!res.ok) throw new Error("Failed to fetch");
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to fetch");
+      }
       const data = await res.json();
-      setChannel(data);
-    } catch {
+      setChannel({
+        id: data?.id ?? null,
+        type: data?.type || "widget",
+        isActive: Boolean(data?.isActive),
+        config: data?.config || {},
+        status: data?.status || "disconnected",
+      });
+    } catch (error) {
+      console.error("Failed to load widget settings", error);
+      setChannel((prev) => ({
+        ...prev,
+        config: prev.config || {},
+      }));
       setFetchError("Failed to load widget settings.");
     } finally {
       setLoading(false);

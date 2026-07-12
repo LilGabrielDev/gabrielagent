@@ -23,8 +23,15 @@ export async function GET(request: NextRequest, context: RouteContext) {
       );
     }
 
-    const tenant = await ensureDefaultTenant();
-    const tenantId = resolveTenantId(auth.tenantId ?? tenant.id);
+    let tenantId = auth.tenantId;
+    if (!tenantId) {
+      try {
+        const tenant = await ensureDefaultTenant();
+        tenantId = resolveTenantId(tenant?.id);
+      } catch {
+        tenantId = "default-tenant";
+      }
+    }
 
     const channel = await prisma.channel.findUnique({
       where: channelLookup(type, tenantId),
@@ -69,8 +76,15 @@ export async function PUT(request: NextRequest, context: RouteContext) {
     const body = await request.json();
     const { isActive, config, status } = body;
 
-    const tenant = await ensureDefaultTenant();
-    const tenantId = resolveTenantId(auth.tenantId ?? tenant.id);
+    let tenantId = auth.tenantId;
+    if (!tenantId) {
+      try {
+        const tenant = await ensureDefaultTenant();
+        tenantId = resolveTenantId(tenant?.id);
+      } catch {
+        tenantId = "default-tenant";
+      }
+    }
 
     const channel = await prisma.channel.upsert({
       where: channelLookup(type, tenantId),
@@ -122,8 +136,15 @@ export async function POST(request: NextRequest, context: RouteContext) {
       );
     }
 
-    const tenant = await ensureDefaultTenant();
-    const tenantId = resolveTenantId(auth.tenantId ?? tenant.id);
+    let tenantId = auth.tenantId;
+    if (!tenantId) {
+      try {
+        const tenant = await ensureDefaultTenant();
+        tenantId = resolveTenantId(tenant?.id);
+      } catch {
+        tenantId = "default-tenant";
+      }
+    }
     const channelWhere = channelLookup(type, tenantId);
 
     const channel = await prisma.channel.findUnique({ where: channelWhere });
