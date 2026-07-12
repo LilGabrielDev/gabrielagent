@@ -46,13 +46,15 @@ model Settings {
 // ==================== AUTH ====================
 
 model Admin {
-  id        String   @id @default(uuid())
-  username  String   @unique
+  id        String     @id @default(uuid())
+  username  String     @unique
   password  String
-  name      String   @default("Admin")
-  role      String   @default("admin")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  name      String     @default("Admin")
+  role      String     @default("admin")
+  tenantId  String?
+  tenant    Tenant?    @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
 }
 
 // ==================== KNOWLEDGE BASE ====================
@@ -89,6 +91,8 @@ model KnowledgeEntry {
 
 model Department {
   id          String       @id @default(uuid())
+  tenantId    String
+  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   name        String
   description String       @default("")
   email       String       @default("")
@@ -96,10 +100,15 @@ model Department {
   tickets     Ticket[]
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
+
+  @@index([tenantId])
 }
+
 
 model TeamMember {
   id           String     @id @default(uuid())
+  tenantId     String
+  tenant       Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   name         String
   email        String
   phone        String     @default("")
@@ -112,13 +121,17 @@ model TeamMember {
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
 
+  @@index([tenantId])
   @@index([departmentId])
 }
+
 
 // ==================== CONVERSATIONS ====================
 
 model Conversation {
   id              String            @id @default(uuid())
+  tenantId        String
+  tenant          Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   channel         String
   customerName    String            @default("Unknown")
   customerContact String            @default("")
@@ -135,6 +148,7 @@ model Conversation {
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
 
+  @@index([tenantId])
   @@index([channel])
   @@index([status])
   @@index([customerContact])
@@ -143,8 +157,11 @@ model Conversation {
   @@index([customerId])
 }
 
+
 model Message {
   id             String       @id @default(uuid())
+  tenantId       String
+  tenant         Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   conversationId String
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   role           String
@@ -154,14 +171,18 @@ model Message {
   toolCalls      Json?
   createdAt      DateTime     @default(now())
 
+  @@index([tenantId])
   @@index([conversationId])
   @@index([conversationId, createdAt])
 }
+
 
 // ==================== TICKETS ====================
 
 model Ticket {
   id             String        @id @default(uuid())
+  tenantId       String
+  tenant         Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   conversationId String?
   conversation   Conversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
   departmentId   String?
@@ -176,10 +197,12 @@ model Ticket {
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
+  @@index([tenantId])
   @@index([status])
   @@index([departmentId])
   @@index([assignedToId])
 }
+
 
 // ==================== TAGS ====================
 
@@ -193,18 +216,24 @@ model Tag {
 
 model ConversationTag {
   id             String       @id @default(uuid())
+  tenantId       String
+  tenant         Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   conversationId String
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   tagId          String
   tag            Tag          @relation(fields: [tagId], references: [id], onDelete: Cascade)
 
+  @@index([tenantId])
   @@unique([conversationId, tagId])
 }
+
 
 // ==================== CALL LOGS ====================
 
 model CallLog {
   id        String   @id @default(uuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   callSid   String   @unique
   from      String
   to        String
@@ -214,37 +243,51 @@ model CallLog {
   summary   String   @default("")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
 }
+
 
 // ==================== CHANNELS ====================
 
 model Channel {
   id        String   @id @default(uuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   type      String   @unique
   isActive  Boolean  @default(false)
   config    Json     @default("{}")
   status    String   @default("disconnected")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
 }
+
 
 // ==================== SCHEDULES ====================
 
 model Schedule {
   id           String @id @default(uuid())
+  tenantId     String
+  tenant       Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   teamMemberId String
   dayOfWeek    Int
   startTime    String
   endTime      String
 
+  @@index([tenantId])
   @@index([teamMemberId])
   @@index([dayOfWeek])
 }
+
 
 // ==================== WEBHOOKS ====================
 
 model Webhook {
   id          String            @id @default(uuid())
+  tenantId    String
+  tenant      Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   name        String
   description String            @default("")
   url         String
@@ -255,10 +298,15 @@ model Webhook {
   deliveries  WebhookDelivery[]
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
+
+  @@index([tenantId])
 }
+
 
 model WebhookDelivery {
   id          String    @id @default(uuid())
+  tenantId    String
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   webhookId   String
   webhook     Webhook   @relation(fields: [webhookId], references: [id], onDelete: Cascade)
   event       String
@@ -271,14 +319,18 @@ model WebhookDelivery {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
+  @@index([tenantId])
   @@index([webhookId])
   @@index([status, nextRetryAt])
 }
+
 
 // ==================== ACTIVITY LOG ====================
 
 model ActivityLog {
   id          String   @id @default(uuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   action      String   // conversation.created, ticket.assigned, settings.updated, etc.
   entity      String   // conversation, ticket, settings, knowledge, team
   entityId    String?
@@ -291,14 +343,18 @@ model ActivityLog {
   userAgent   String?
   createdAt   DateTime @default(now())
 
+  @@index([tenantId])
   @@index([entity])
   @@index([createdAt])
 }
+
 
 // ==================== SLA RULES ====================
 
 model SLARule {
   id                String   @id @default(uuid())
+  tenantId          String
+  tenant            Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   name              String
   description       String   @default("")
   channel           String   @default("all") // all, whatsapp, email, phone
@@ -308,26 +364,36 @@ model SLARule {
   isActive          Boolean  @default(true)
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
+
+  @@index([tenantId])
 }
+
 
 // ==================== CANNED RESPONSES ====================
 
 model CannedResponse {
-  id        String   @id @default(uuid())
-  title     String
-  content   String
-  category  String   @default("General")
-  shortcut  String   @default("") // e.g., /greeting, /refund
-  isActive  Boolean  @default(true)
-  usageCount Int     @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(uuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  title       String
+  content     String
+  category    String   @default("General")
+  shortcut    String   @default("") // e.g., /greeting, /refund
+  isActive    Boolean  @default(true)
+  usageCount  Int     @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([tenantId])
 }
+
 
 // ==================== CUSTOMERS ====================
 
 model Customer {
   id            String         @id @default(uuid())
+  tenantId      String
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   name          String
   email         String         @default("")
   phone         String         @default("")
@@ -342,27 +408,35 @@ model Customer {
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 
+  @@index([tenantId])
   @@index([email])
   @@index([phone])
   @@index([whatsapp])
   @@index([lastContact])
 }
 
+
 model CustomerNote {
   id         String   @id @default(uuid())
+  tenantId   String
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   customerId String
   customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
   content    String
   authorName String   @default("Admin")
   createdAt  DateTime @default(now())
 
+  @@index([tenantId])
   @@index([customerId])
 }
+
 
 // ==================== AUTOMATION RULES ====================
 
 model AutomationRule {
   id          String   @id @default(uuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   name        String
   description String   @default("")
   type        String   // auto_route, auto_tag, auto_reply, keyword_alert
@@ -373,12 +447,17 @@ model AutomationRule {
   triggerCount Int     @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@index([tenantId])
 }
+
 
 // ==================== BUSINESS HOURS ====================
 
 model BusinessHours {
   id        String  @id @default("default")
+  tenantId  String
+  tenant    Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   enabled   Boolean @default(false)
   timezone  String  @default("UTC")
   monday    String  @default("09:00-18:00") // empty = closed
@@ -389,13 +468,18 @@ model BusinessHours {
   saturday  String  @default("")
   sunday    String  @default("")
   offlineMessage String @default("We are currently offline. We will get back to you during business hours.")
+
+  @@index([tenantId])
 }
+
 
 // ==================== API KEYS ====================
 
 model ApiKey {
   id        String   @id @default(uuid())
   name      String
+  tenantId  String?
+  tenant    Tenant?  @relation(fields: [tenantId], references: [id], onDelete: SetNull)
   key       String   @unique
   isActive  Boolean  @default(true)
   lastUsed  DateTime?
@@ -403,25 +487,33 @@ model ApiKey {
   updatedAt DateTime @updatedAt
 
   @@index([key])
+  @@index([tenantId])
 }
+
 
 // ==================== INTERNAL NOTES ====================
 
 model InternalNote {
   id             String       @id @default(uuid())
+  tenantId       String
+  tenant         Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   conversationId String
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   content        String
   authorName     String       @default("Admin")
   createdAt      DateTime     @default(now())
 
+  @@index([tenantId])
   @@index([conversationId])
 }
+
 
 // ==================== CAMPAIGNS ====================
 
 model Campaign {
   id          String   @id @default(uuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   name        String
   description String   @default("")
   channel     String   @default("email")
@@ -433,12 +525,33 @@ model Campaign {
   sentCount   Int      @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+
+// ==================== TENANTS / MULTI-TENANT ====================
+
+model Tenant {
+  id           String   @id @default(uuid())
+  name         String
+  domain       String?  @unique
+  logo         String   @default("")
+  primaryColor String   @default("#0F172A")
+  customDomain String?
+  isActive     Boolean  @default(true)
+  config       Json     @default("{}")
+  admins       Admin[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 // ==================== FLOWS ====================
 
 model Flow {
   id          String   @id @default(uuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   name        String
   description String   @default("")
   startNodeId String   @default("")
@@ -447,4 +560,7 @@ model Flow {
   triggerCount Int     @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@index([tenantId])
 }
+

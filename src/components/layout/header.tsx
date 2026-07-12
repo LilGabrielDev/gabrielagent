@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { Bell, Search, Sun, Moon, LogOut, User } from "lucide-react";
 import { useState, useRef, useEffect, FormEvent } from "react";
 import { useTheme } from "@/lib/hooks/use-theme";
+import { RealtimeStatusIndicator } from "@/components/layout/realtime-status";
 
 interface HeaderProps {
   title: string;
@@ -75,6 +76,8 @@ export function Header({ title, description, actions }: HeaderProps) {
         >
           <Search className="h-5 w-5" />
         </button>
+
+        <RealtimeStatusIndicator />
 
         <button
           onClick={toggleTheme}
