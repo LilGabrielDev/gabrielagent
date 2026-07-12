@@ -6,6 +6,7 @@ import { OnboardingChecklist } from "@/components/ui/onboarding-checklist";
 import { QuickActions } from "@/components/dashboard/quick-actions";
 import { SystemStatus } from "@/components/dashboard/system-status";
 import { prisma } from "@/lib/prisma";
+import { logger } from "@/lib/logger";
 import {
   MessageSquare,
   Ticket,
@@ -20,52 +21,66 @@ import { formatRelativeTime, getChannelLabel, getStatusColor } from "@/lib/utils
 export const dynamic = "force-dynamic";
 
 async function getStats() {
-  const [
-    totalConversations,
-    activeConversations,
-    totalTickets,
-    openTickets,
-    totalMessages,
-    recentConversations,
-    channelRecords,
-  ] = await Promise.all([
-    prisma.conversation.count(),
-    prisma.conversation.count({ where: { status: "active" } }),
-    prisma.ticket.count(),
-    prisma.ticket.count({ where: { status: "open" } }),
-    prisma.message.count(),
-    prisma.conversation.findMany({
-      take: 10,
-      orderBy: { updatedAt: "desc" },
-      include: {
-        messages: { take: 1, orderBy: { createdAt: "desc" } },
-        _count: { select: { messages: true } },
-      },
-    }),
-    prisma.channel.findMany({
-      where: { type: { in: ["whatsapp", "email", "phone"] } },
-    }),
-  ]);
+  try {
+    const [
+      totalConversations,
+      activeConversations,
+      totalTickets,
+      openTickets,
+      totalMessages,
+      recentConversations,
+      channelRecords,
+    ] = await Promise.all([
+      prisma.conversation.count(),
+      prisma.conversation.count({ where: { status: "active" } }),
+      prisma.ticket.count(),
+      prisma.ticket.count({ where: { status: "open" } }),
+      prisma.message.count(),
+      prisma.conversation.findMany({
+        take: 10,
+        orderBy: { updatedAt: "desc" },
+        include: {
+          messages: { take: 1, orderBy: { createdAt: "desc" } },
+          _count: { select: { messages: true } },
+        },
+      }),
+      prisma.channel.findMany({
+        where: { type: { in: ["whatsapp", "email", "phone"] } },
+      }),
+    ]);
 
-  const resolvedConversations = await prisma.conversation.count({
-    where: { status: "resolved" },
-  });
+    const resolvedConversations = await prisma.conversation.count({
+      where: { status: "resolved" },
+    });
 
-  const resolutionRate =
-    totalConversations > 0
-      ? Math.round((resolvedConversations / totalConversations) * 100)
-      : 0;
+    const resolutionRate =
+      totalConversations > 0
+        ? Math.round((resolvedConversations / totalConversations) * 100)
+        : 0;
 
-  return {
-    totalConversations,
-    activeConversations,
-    totalTickets,
-    openTickets,
-    totalMessages,
-    resolutionRate,
-    recentConversations,
-    channelRecords,
-  };
+    return {
+      totalConversations,
+      activeConversations,
+      totalTickets,
+      openTickets,
+      totalMessages,
+      resolutionRate,
+      recentConversations,
+      channelRecords,
+    };
+  } catch (error) {
+    logger.error("Failed to load dashboard stats", error);
+    return {
+      totalConversations: 0,
+      activeConversations: 0,
+      totalTickets: 0,
+      openTickets: 0,
+      totalMessages: 0,
+      resolutionRate: 0,
+      recentConversations: [],
+      channelRecords: [],
+    };
+  }
 }
 
 const channelIcons: Record<string, React.ElementType> = {
@@ -214,29 +229,28 @@ export default async function DashboardPage() {
                   );
                   const connected =
                     record?.status === "connected" || record?.isActive === true;
+                  const Icon = channel.icon;
                   return (
-                  <div
-                    key={channel.name}
-                    className="flex items-center justify-between"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <channel.icon
-                        className={`h-4 w-4 ${channel.color}`}
-                      />
-                      <span className="text-sm font-medium">
-                        {channel.name}
+                    <div
+                      key={channel.name}
+                      className="flex items-center justify-between"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <Icon className={`h-4 w-4 ${channel.color}`} />
+                        <span className="text-sm font-medium">
+                          {channel.name}
+                        </span>
+                      </div>
+                      <span
+                        className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                          connected
+                            ? "bg-green-50 text-green-600"
+                            : "bg-red-50 text-red-600"
+                        }`}
+                      >
+                        {connected ? "Connected" : record?.status || "Disconnected"}
                       </span>
                     </div>
-                    <span
-                      className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                        connected
-                          ? "bg-green-50 text-green-600"
-                          : "bg-red-50 text-red-600"
-                      }`}
-                    >
-                      {connected ? "Connected" : record?.status || "Disconnected"}
-                    </span>
-                  </div>
                   );
                 })}
               </div>

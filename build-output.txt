@@ -7,3 +7,120 @@ Skipping `prisma generate` because no DATABASE_URL found and PRISMA_FORCE not se
 - Environments: .env
 
   Creating an optimized production build ...
+✓ Compiled successfully in 21.2s
+  Running TypeScript ...
+  Finished TypeScript in 17.6s ...
+  Collecting page data using 7 workers ...
+  Generating static pages using 7 workers (0/64) ...
+  Generating static pages using 7 workers (16/64) 
+  Generating static pages using 7 workers (32/64) 
+  Generating static pages using 7 workers (48/64) 
+✓ Generating static pages using 7 workers (64/64) in 1823ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ƒ /
+├ ○ /_not-found
+├ ○ /activity
+├ ○ /admin
+├ ○ /analytics
+├ ○ /api-docs
+├ ƒ /api/activity
+├ ƒ /api/admin/api-keys
+├ ƒ /api/admin/api-keys/[id]
+├ ƒ /api/admin/plugins
+├ ƒ /api/admin/users
+├ ƒ /api/admin/users/[id]
+├ ƒ /api/analytics
+├ ƒ /api/auth
+├ ƒ /api/automation
+├ ƒ /api/automation/[id]
+├ ƒ /api/business-hours
+├ ƒ /api/campaigns
+├ ƒ /api/campaigns/[id]
+├ ƒ /api/campaigns/[id]/execute
+├ ƒ /api/canned-responses
+├ ƒ /api/canned-responses/[id]
+├ ƒ /api/channels
+├ ƒ /api/channels/[type]
+├ ƒ /api/channels/email
+├ ƒ /api/channels/instagram
+├ ƒ /api/channels/phone/gather
+├ ƒ /api/channels/phone/incoming
+├ ƒ /api/channels/phone/status
+├ ƒ /api/channels/sms
+├ ƒ /api/channels/telegram
+├ ƒ /api/channels/whatsapp
+├ ƒ /api/channels/whatsapp/pair-code
+├ ƒ /api/chat
+├ ƒ /api/conversations
+├ ƒ /api/conversations/[id]
+├ ƒ /api/conversations/[id]/macro
+├ ƒ /api/conversations/[id]/merge
+├ ƒ /api/conversations/[id]/messages
+├ ƒ /api/conversations/[id]/notes
+├ ƒ /api/conversations/[id]/route-to
+├ ƒ /api/conversations/[id]/satisfaction
+├ ƒ /api/conversations/[id]/snooze
+├ ƒ /api/conversations/[id]/transfer
+├ ƒ /api/customers
+├ ƒ /api/customers/[id]
+├ ƒ /api/customers/[id]/conversations
+├ ƒ /api/customers/[id]/gdpr/delete
+├ ƒ /api/customers/[id]/gdpr/export
+├ ƒ /api/customers/[id]/notes
+├ ƒ /api/export
+├ ƒ /api/flows
+├ ƒ /api/flows/[id]
+├ ƒ /api/flows/[id]/validate
+├ ƒ /api/health
+├ ƒ /api/knowledge/categories
+├ ƒ /api/knowledge/categories/[id]
+├ ƒ /api/knowledge/entries
+├ ƒ /api/knowledge/entries/[id]
+├ ƒ /api/knowledge/test
+├ ƒ /api/openapi.json
+├ ƒ /api/realtime
+├ ƒ /api/settings
+├ ƒ /api/sla
+├ ƒ /api/sla/[id]
+├ ƒ /api/stats
+├ ƒ /api/team/departments
+├ ƒ /api/team/departments/[id]
+├ ƒ /api/team/members
+├ ƒ /api/team/members/[id]
+├ ƒ /api/tickets
+├ ƒ /api/tickets/[id]
+├ ƒ /api/typing
+├ ƒ /api/webhooks
+├ ƒ /api/webhooks/[id]
+├ ƒ /api/webhooks/[id]/deliveries
+├ ƒ /api/webhooks/test
+├ ○ /automation
+├ ○ /business-hours
+├ ○ /campaigns
+├ ○ /canned-responses
+├ ○ /channels
+├ ○ /conversations
+├ ○ /customers
+├ ○ /flows
+├ ○ /help
+├ ○ /knowledge
+├ ○ /knowledge/test
+├ ○ /login
+├ ○ /settings
+├ ○ /setup
+├ ○ /sla
+├ ○ /team
+├ ○ /tickets
+├ ○ /webhooks
+└ ○ /widget
+
+Route (pages)
+─ ƒ /api/sessions
+
+ƒ Proxy (Middleware)
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
