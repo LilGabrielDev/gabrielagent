@@ -58,6 +58,7 @@ function createMockPrismaClient() {
   };
 
   const models = [
+    "tenant",
     "settings",
     "admin",
     "conversation",
@@ -102,6 +103,15 @@ function createMockPrismaClient() {
       (client[model] as Record<string, unknown>)[method] = vi.fn();
     }
   }
+
+  (client.tenant as Record<string, unknown>).upsert = vi.fn().mockResolvedValue({
+    id: "default-tenant",
+    name: "Default Tenant",
+    domain: "localhost",
+    logo: "/gabriel.png",
+    primaryColor: "#0F172A",
+    isActive: true,
+  });
 
   return client;
 }

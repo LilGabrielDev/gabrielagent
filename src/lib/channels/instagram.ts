@@ -9,6 +9,7 @@ import { prisma } from "@/lib/prisma";
 import { chat, createNewConversation } from "@/lib/ai/engine";
 import { resolveCustomer } from "@/lib/customer-resolver";
 import { logger } from "@/lib/logger";
+import { getActiveTenantId } from "@/lib/tenant-prisma";
 
 interface InstagramConfig {
   appId: string;
@@ -63,7 +64,10 @@ interface InstagramUser {
 }
 
 async function getInstagramConfig(): Promise<InstagramConfig | null> {
-  const settings = await prisma.settings.findFirst();
+  const tenantId = getActiveTenantId();
+  const settings = await prisma.settings.findFirst({
+    where: tenantId ? { tenantId } : undefined,
+  });
   if (!settings) return null;
 
   const config = settings as unknown as Record<string, unknown>;

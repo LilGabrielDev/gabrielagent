@@ -3,6 +3,7 @@ import { verifyToken } from "@/lib/auth";
 import { hasPermission, Permission } from "@/lib/rbac";
 import { prisma } from "@/lib/prisma";
 import { runWithTenantContext } from "@/lib/tenant-prisma";
+import { resolveTenantId } from "@/lib/default-tenant";
 
 interface AuthContext {
   userId: string;
@@ -49,8 +50,10 @@ async function authenticateApiKey(apiKey: string): Promise<AuthContext | null> {
 export async function requireAuth(
   request: NextRequest,
   permission?: Permission,
-  tenantScoped: boolean = true // New parameter to control tenant scoping
+  tenantScoped: boolean = true
 ): Promise<AuthContext | NextResponse> {
+  const requestedTenantId = request.headers.get("x-tenant-id") || request.headers.get("x-tenant");
+
   // Try API key auth first
   const apiKey = request.headers.get("x-api-key");
   if (apiKey) {
@@ -69,9 +72,16 @@ export async function requireAuth(
       );
     }
 
-    // If tenant scoping is enabled, run the rest of the request in tenant context
-    if (tenantScoped && context.tenantId) {
-      return runWithTenantContext(context.tenantId, () => context);
+    if (tenantScoped && requestedTenantId && context.tenantId && requestedTenantId !== context.tenantId) {
+      return NextResponse.json(
+        { error: { code: "TENANT_MISMATCH", message: "Tenant mismatch" } },
+        { status: 403 }
+      );
+    }
+
+    const effectiveTenantId = resolveTenantId(context.tenantId);
+    if (tenantScoped && effectiveTenantId) {
+      return runWithTenantContext(effectiveTenantId, () => context);
     }
     return context;
   }
@@ -113,6 +123,13 @@ export async function requireAuth(
     );
   }
 
+  if (tenantScoped && requestedTenantId && admin.tenantId && requestedTenantId !== admin.tenantId) {
+    return NextResponse.json(
+      { error: { code: "TENANT_MISMATCH", message: "Tenant mismatch" } },
+      { status: 403 }
+    );
+  }
+
   const authContext: AuthContext = {
     userId: admin.id,
     role: admin.role,
@@ -122,9 +139,9 @@ export async function requireAuth(
     authMethod: "cookie",
   };
 
-  // If tenant scoping is enabled, run the rest of the request in tenant context
-  if (tenantScoped && authContext.tenantId) {
-    return runWithTenantContext(authContext.tenantId, () => authContext);
+  const effectiveTenantId = resolveTenantId(authContext.tenantId);
+  if (tenantScoped && effectiveTenantId) {
+    return runWithTenantContext(effectiveTenantId, () => authContext);
   }
 
   return authContext;

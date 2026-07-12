@@ -137,7 +137,7 @@ export default async function DashboardPage() {
                   </p>
                 </div>
               ) : (
-                stats.recentConversations.map((conv) => {
+                stats.recentConversations.map((conv: any) => {
                   const ChannelIcon =
                     channelIcons[conv.channel] || MessageSquare;
                   const lastMessage = conv.messages[0];
@@ -208,9 +208,9 @@ export default async function DashboardPage() {
                   },
                   { type: "email", name: "Email", icon: Mail, color: "text-blue-600" },
                   { type: "phone", name: "Phone", icon: Phone, color: "text-purple-600" },
-                ].map((channel) => {
+                ].map((channel: any) => {
                   const record = stats.channelRecords.find(
-                    (c) => c.type === channel.type
+                    (c: any) => c.type === channel.type
                   );
                   const connected =
                     record?.status === "connected" || record?.isActive === true;

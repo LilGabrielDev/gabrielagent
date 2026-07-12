@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const token = generateToken(admin.id, admin.role);
+    const token = generateToken(admin.id, admin.role, tenant.id);
     const cookie = setAuthCookie(token);
 
     const response = NextResponse.json({
@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const token = generateToken(admin.id, admin.role);
+    const token = generateToken(admin.id, admin.role, admin.tenantId || undefined);
     const cookie = setAuthCookie(token);
 
     const response = NextResponse.json({

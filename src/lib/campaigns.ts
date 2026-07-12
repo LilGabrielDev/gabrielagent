@@ -79,7 +79,7 @@ export async function findTargetCustomers(
     take: limit,
   });
 
-  return customers.filter((customer) => {
+  return customers.filter((customer: any) => {
     const record = customer as unknown as Record<string, unknown>;
     return segments.every((seg) => matchesSegment(record, seg));
   });

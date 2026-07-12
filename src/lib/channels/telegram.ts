@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { chat, createNewConversation } from "@/lib/ai/engine";
 import { resolveCustomer } from "@/lib/customer-resolver";
 import { logger } from "@/lib/logger";
+import { getActiveTenantId } from "@/lib/tenant-prisma";
 
 interface TelegramUpdate {
   update_id: number;
@@ -23,7 +24,9 @@ interface TelegramUpdate {
 }
 
 async function getTelegramToken(): Promise<string> {
+  const tenantId = getActiveTenantId();
   const settings = await prisma.settings.findFirst({
+    where: tenantId ? { tenantId } : undefined,
     select: { telegramBotToken: true },
   });
   return settings?.telegramBotToken || "";

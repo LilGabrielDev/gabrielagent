@@ -139,7 +139,7 @@ export async function evaluateRules(
           where: { id: rule.id },
           data: { triggerCount: { increment: 1 } },
         })
-        .catch((err) =>
+        .catch((err: unknown) =>
           logger.error(`Failed to increment trigger count for rule ${rule.id}`, err)
         );
     }

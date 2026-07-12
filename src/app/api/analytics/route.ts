@@ -118,7 +118,7 @@ export async function GET(request: NextRequest) {
   }));
 
   // -- Channel breakdown --
-  const channelBreakdown = channelGroups.map((g) => ({
+  const channelBreakdown = channelGroups.map((g: any) => ({
     channel: g.channel,
     count: g._count.id,
   }));
@@ -152,7 +152,7 @@ export async function GET(request: NextRequest) {
 
   // -- Resolution rate --
   const resolved = allConversations.filter(
-    (c) => c.status === "resolved" || c.status === "closed"
+    (c: any) => c.status === "resolved" || c.status === "closed"
   ).length;
   const resolutionRate =
     allConversations.length > 0
@@ -160,36 +160,36 @@ export async function GET(request: NextRequest) {
       : 0;
 
   // -- Satisfaction average --
-  const rated = conversations.filter((c) => c.satisfaction != null);
+  const rated = conversations.filter((c: any) => c.satisfaction != null);
   const satisfactionAvg =
     rated.length > 0
       ? Math.round(
-          (rated.reduce((sum, c) => sum + (c.satisfaction ?? 0), 0) /
+          (rated.reduce((sum: number, c: any) => sum + (c.satisfaction ?? 0), 0) /
             rated.length) *
             10
         ) / 10
       : 0;
 
   // -- Top categories --
-  const topCategories = categories.map((c) => ({
+  const topCategories = categories.map((c: any) => ({
     category: c.name,
     hitCount: c._count.entries,
   }));
 
   // -- Team performance --
   const teamPerformance = teamMembers
-    .map((tm) => {
+    .map((tm: any) => {
       const resolvedTickets = tm.tickets.filter(
-        (t) => t.status === "resolved" || t.status === "closed"
+        (t: any) => t.status === "resolved" || t.status === "closed"
       );
       const times = resolvedTickets.map(
-        (t) =>
+        (t: any) =>
           (new Date(t.updatedAt).getTime() - new Date(t.createdAt).getTime()) /
           60000
       );
       const avg =
         times.length > 0
-          ? Math.round((times.reduce((a, b) => a + b, 0) / times.length) * 10) / 10
+          ? Math.round((times.reduce((a: number, b: number) => a + b, 0) / times.length) * 10) / 10
           : 0;
       return {
         member: tm.name,
@@ -197,8 +197,8 @@ export async function GET(request: NextRequest) {
         avgTime: avg,
       };
     })
-    .filter((t) => t.ticketsResolved > 0)
-    .sort((a, b) => b.ticketsResolved - a.ticketsResolved);
+    .filter((t: any) => t.ticketsResolved > 0)
+    .sort((a: any, b: any) => b.ticketsResolved - a.ticketsResolved);
 
   return NextResponse.json({
     conversationsPerDay,
@@ -206,11 +206,11 @@ export async function GET(request: NextRequest) {
     avgResponseTime,
     resolutionRate,
     satisfactionAvg,
-    ticketsByPriority: ticketsByPriority.map((g) => ({
+    ticketsByPriority: ticketsByPriority.map((g: any) => ({
       priority: g.priority,
       count: g._count.id,
     })),
-    ticketsByStatus: ticketsByStatus.map((g) => ({
+    ticketsByStatus: ticketsByStatus.map((g: any) => ({
       status: g.status,
       count: g._count.id,
     })),

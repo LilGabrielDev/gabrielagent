@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
       prisma.apiKey.count(),
     ]);
 
-    const masked = keys.map((k) => ({
+    const masked = keys.map((k: any) => ({
       ...k,
       key: maskKey(k.key),
     }));

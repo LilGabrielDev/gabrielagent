@@ -7,6 +7,14 @@ interface LogEntry {
   context?: Record<string, unknown>;
 }
 
+function normalizeContext(context?: Record<string, unknown> | unknown): Record<string, unknown> | undefined {
+  if (context == null) return undefined;
+  if (typeof context === "object" && !Array.isArray(context)) {
+    return context as Record<string, unknown>;
+  }
+  return { value: String(context) };
+}
+
 function formatEntry(entry: LogEntry): string {
   const ctx = entry.context
     ? ` ${JSON.stringify(entry.context)}`
@@ -28,19 +36,19 @@ function createEntry(
 }
 
 export const logger = {
-  debug(message: string, context?: Record<string, unknown>) {
+  debug(message: string, context?: Record<string, unknown> | unknown) {
     if (process.env.NODE_ENV === "production") return;
-    const entry = createEntry("debug", message, context);
+    const entry = createEntry("debug", message, normalizeContext(context));
     console.debug(formatEntry(entry));
   },
 
-  info(message: string, context?: Record<string, unknown>) {
-    const entry = createEntry("info", message, context);
+  info(message: string, context?: Record<string, unknown> | unknown) {
+    const entry = createEntry("info", message, normalizeContext(context));
     console.info(formatEntry(entry));
   },
 
-  warn(message: string, context?: Record<string, unknown>) {
-    const entry = createEntry("warn", message, context);
+  warn(message: string, context?: Record<string, unknown> | unknown) {
+    const entry = createEntry("warn", message, normalizeContext(context));
     console.warn(formatEntry(entry));
   },
 

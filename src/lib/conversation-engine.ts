@@ -45,7 +45,7 @@ export async function routeConversation(
     case "skill_based":
       if (requiredExpertise) {
         const expertiseLower = requiredExpertise.toLowerCase();
-        selected = members.find((m) =>
+        selected = members.find((m: any) =>
           m.expertise.toLowerCase().includes(expertiseLower)
         );
       }
@@ -53,7 +53,7 @@ export async function routeConversation(
       break;
 
     case "least_busy":
-      selected = members.reduce((min, m) =>
+      selected = members.reduce((min: any, m: any) =>
         m._count.tickets < min._count.tickets ? m : min
       );
       break;
@@ -66,7 +66,7 @@ export async function routeConversation(
         select: { assignedToId: true },
       });
       if (lastTicket?.assignedToId) {
-        const lastIndex = members.findIndex((m) => m.id === lastTicket.assignedToId);
+        const lastIndex = members.findIndex((m: any) => m.id === lastTicket.assignedToId);
         selected = members[(lastIndex + 1) % members.length];
       } else {
         selected = members[0];

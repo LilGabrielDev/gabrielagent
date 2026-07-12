@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
       : 0;
 
   const channels = channelBreakdown.reduce(
-    (acc, item) => {
+    (acc: Record<string, number>, item: any) => {
       acc[item.channel] = item._count.id;
       return acc;
     },

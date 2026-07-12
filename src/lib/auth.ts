@@ -28,15 +28,15 @@ export async function verifyPassword(
   return bcrypt.compare(password, hash);
 }
 
-export function generateToken(userId: string, role: string): string {
-  return jwt.sign({ userId, role }, JWT_SECRET, { expiresIn: TOKEN_EXPIRY });
+export function generateToken(userId: string, role: string, tenantId?: string): string {
+  return jwt.sign({ userId, role, ...(tenantId ? { tenantId } : {}) }, JWT_SECRET, { expiresIn: TOKEN_EXPIRY });
 }
 
 export function verifyToken(
   token: string
-): { userId: string; role: string } | null {
+): { userId: string; role: string; tenantId?: string } | null {
   try {
-    return jwt.verify(token, JWT_SECRET) as { userId: string; role: string };
+    return jwt.verify(token, JWT_SECRET) as { userId: string; role: string; tenantId?: string };
   } catch {
     return null;
   }
@@ -52,7 +52,7 @@ export async function getCurrentUser() {
 
   const admin = await prisma.admin.findUnique({
     where: { id: payload.userId },
-    select: { id: true, username: true, name: true, role: true },
+    select: { id: true, username: true, name: true, role: true, tenantId: true },
   });
 
   return admin;

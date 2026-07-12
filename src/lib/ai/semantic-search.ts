@@ -123,7 +123,7 @@ export async function searchKnowledgeBase(
 
     if (queryEmbedding) {
       // Score entries using embeddings (stored in metadata) + keyword fallback
-      results = entries.map((entry) => {
+      results = entries.map((entry: any) => {
         const metadata = entry.metadata as Record<string, unknown> | null;
         const entryEmbedding = metadata?.embedding as number[] | null;
 

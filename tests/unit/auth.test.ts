@@ -64,6 +64,16 @@ describe("Auth Module", () => {
       expect(payload!.role).toBe("editor");
     });
 
+    it("should preserve tenant information in generated tokens", async () => {
+      const { generateToken, verifyToken } = await import("@/lib/auth");
+
+      const token = generateToken("user-789", "admin", "tenant-123");
+      const payload = verifyToken(token);
+
+      expect(payload).not.toBeNull();
+      expect(payload!.tenantId).toBe("tenant-123");
+    });
+
     it("should return null for invalid token", async () => {
       const { verifyToken } = await import("@/lib/auth");
 

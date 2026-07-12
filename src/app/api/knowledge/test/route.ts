@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
     // Build knowledge context
     const knowledgeContext = entries
       .map(
-        (entry, index) =>
+        (entry: any, index: number) =>
           `[Entry ${index + 1}] Category: ${entry.category.name} | Title: ${entry.title}\n${entry.content}`
       )
       .join("\n\n---\n\n");

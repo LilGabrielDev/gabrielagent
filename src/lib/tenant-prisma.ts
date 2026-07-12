@@ -1,7 +1,9 @@
 import { PrismaClient } from "@/generated/prisma/client";
 import { AsyncLocalStorage } from "async_hooks";
 
-const prisma = new PrismaClient();
+const basePrisma = new PrismaClient({
+  log: [],
+} as any);
 
 interface TenantContext {
   tenantId?: string;
@@ -9,97 +11,85 @@ interface TenantContext {
 
 const asyncLocalStorage = new AsyncLocalStorage<TenantContext>();
 
-export const tenantPrisma = prisma.$extends({
+function withTenantScope(args: any, tenantId: string | undefined) {
+  if (!tenantId) return args;
+  return {
+    ...args,
+    where: {
+      ...(args?.where || {}),
+      tenantId,
+    },
+  };
+}
+
+export const tenantPrisma = basePrisma.$extends({
   query: {
     $allModels: {
-      async findMany({
-        model, args, query
-      }) {
+      async findMany({ model, args, query }: any) {
         const store = asyncLocalStorage.getStore();
-        if (store?.tenantId && model !== 'Tenant' && model !== 'Settings') {
-          args.where = {
-            ...args.where,
-            tenantId: store.tenantId,
+        if (store?.tenantId && model !== "Tenant" && model !== "Settings") {
+          args = withTenantScope(args, store.tenantId);
+        }
+        return query(args);
+      },
+      async findFirst({ model, args, query }: any) {
+        const store = asyncLocalStorage.getStore();
+        if (store?.tenantId && model !== "Tenant" && model !== "Settings") {
+          args = withTenantScope(args, store.tenantId);
+        }
+        return query(args);
+      },
+      async findUnique({ model, args, query }: any) {
+        const store = asyncLocalStorage.getStore();
+        if (store?.tenantId && model !== "Tenant" && model !== "Settings") {
+          args = withTenantScope(args, store.tenantId);
+        }
+        return query(args);
+      },
+      async create({ model, args, query }: any) {
+        const store = asyncLocalStorage.getStore();
+        if (store?.tenantId && model !== "Tenant" && model !== "Settings") {
+          args = {
+            ...args,
+            data: {
+              ...(args?.data || {}),
+              tenantId: store.tenantId,
+            },
           };
         }
         return query(args);
       },
-      async findFirst({
-        model, args, query
-      }) {
+      async update({ model, args, query }: any) {
         const store = asyncLocalStorage.getStore();
-        if (store?.tenantId && model !== 'Tenant' && model !== 'Settings') {
-          args.where = {
-            ...args.where,
-            tenantId: store.tenantId,
-          };
+        if (store?.tenantId && model !== "Tenant" && model !== "Settings") {
+          args = withTenantScope(args, store.tenantId);
         }
         return query(args);
       },
-      async findUnique({
-        model, args, query
-      }) {
+      async delete({ model, args, query }: any) {
         const store = asyncLocalStorage.getStore();
-        if (store?.tenantId && model !== 'Tenant' && model !== 'Settings') {
-          args.where = {
-            ...args.where,
-            tenantId: store.tenantId,
-          };
+        if (store?.tenantId && model !== "Tenant" && model !== "Settings") {
+          args = withTenantScope(args, store.tenantId);
         }
         return query(args);
       },
-      async create({
-        model, args, query
-      }) {
+      async upsert({ model, args, query }: any) {
         const store = asyncLocalStorage.getStore();
-        if (store?.tenantId && model !== 'Tenant' && model !== 'Settings') {
-          args.data = {
-            ...args.data,
-            tenantId: store.tenantId,
-          };
-        }
-        return query(args);
-      },
-      async update({
-        model, args, query
-      }) {
-        const store = asyncLocalStorage.getStore();
-        if (store?.tenantId && model !== 'Tenant' && model !== 'Settings') {
-          args.where = {
-            ...args.where,
-            tenantId: store.tenantId,
-          };
-        }
-        return query(args);
-      },
-      async delete({
-        model, args, query
-      }) {
-        const store = asyncLocalStorage.getStore();
-        if (store?.tenantId && model !== 'Tenant' && model !== 'Settings') {
-          args.where = {
-            ...args.where,
-            tenantId: store.tenantId,
-          };
-        }
-        return query(args);
-      },
-      async upsert({
-        model, args, query
-      }) {
-        const store = asyncLocalStorage.getStore();
-        if (store?.tenantId && model !== 'Tenant' && model !== 'Settings') {
-          args.where = {
-            ...args.where,
-            tenantId: store.tenantId,
-          };
-          args.create = {
-            ...args.create,
-            tenantId: store.tenantId,
-          };
-          args.update = {
-            ...args.update,
-            tenantId: store.tenantId,
+        if (store?.tenantId && model !== "Tenant" && model !== "Settings") {
+          args = {
+            ...args,
+            where: {
+              ...((args?.where as Record<string, unknown>) || {}),
+              tenantId: store.tenantId,
+            },
+            create: {
+              ...(args?.create || {}),
+              tenantId: store.tenantId,
+            },
+            update: {
+              ...(args?.update || {}),
+              tenantId: store.tenantId,
+            },
           };
         }
         return query(args);
@@ -111,3 +101,9 @@ export const tenantPrisma = prisma.$extends({
 export function runWithTenantContext<R>(tenantId: string | undefined, fn: () => R): R {
   return asyncLocalStorage.run({ tenantId }, fn);
 }
+
+export function getActiveTenantId(): string | undefined {
+  return asyncLocalStorage.getStore()?.tenantId;
+}
+
+export const prisma: any = tenantPrisma;

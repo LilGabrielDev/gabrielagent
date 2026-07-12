@@ -83,17 +83,17 @@ export async function exportCustomerData(customerId: string): Promise<Record<str
       lastContact: customer.lastContact,
       createdAt: customer.createdAt,
     },
-    notes: customer.notes.map((n) => ({
+    notes: customer.notes.map((n: any) => ({
       content: n.content,
       author: n.authorName,
       date: n.createdAt,
     })),
-    conversations: customer.conversations.map((c) => ({
+    conversations: customer.conversations.map((c: any) => ({
       id: c.id,
       channel: c.channel,
       status: c.status,
       createdAt: c.createdAt,
-      messages: c.messages.map((m) => ({
+      messages: c.messages.map((m: any) => ({
         role: m.role,
         content: m.content,
         date: m.createdAt,
@@ -193,7 +193,7 @@ export async function applyRetentionPolicy(
   const conversationsDeleted = oldConversations.length;
   if (conversationsDeleted > 0) {
     await prisma.conversation.deleteMany({
-      where: { id: { in: oldConversations.map((c) => c.id) } },
+      where: { id: { in: oldConversations.map((c: any) => c.id) } },
     });
   }
 

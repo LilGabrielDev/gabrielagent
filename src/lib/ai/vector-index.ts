@@ -103,23 +103,25 @@ function formatVectorLiteral(vec: number[]): string {
 export async function indexAllEntries(apiKey: string): Promise<number> {
   const entries = await prisma.knowledgeEntry.findMany({
     where: {
-      metadata: {
-        path: ["embedding"],
-        equals: null,
-      },
+      isActive: true,
     },
   });
 
-  if (entries.length === 0) {
+  const pendingEntries = entries.filter((entry: any) => {
+    const metadata = (entry.metadata as Record<string, unknown> | null) ?? {};
+    return !metadata.embedding;
+  });
+
+  if (pendingEntries.length === 0) {
     logger.info("No entries require indexing — all have embeddings.");
     return 0;
   }
 
-  logger.info(`Found ${entries.length} entries to index.`);
+  logger.info(`Found ${pendingEntries.length} entries to index.`);
 
   let indexedCount = 0;
 
-  for (const entry of entries) {
+  for (const entry of pendingEntries) {
     try {
       const text = `${entry.title}\n${entry.content}`;
       const embedding = await generateEmbedding(text, apiKey);
@@ -149,7 +151,7 @@ export async function indexAllEntries(apiKey: string): Promise<number> {
     }
   }
 
-  logger.info(`Indexing complete: ${indexedCount}/${entries.length} entries processed.`);
+  logger.info(`Indexing complete: ${indexedCount}/${pendingEntries.length} entries processed.`);
   return indexedCount;
 }
 
@@ -218,7 +220,6 @@ export async function runSimilaritySearch(
   query: string,
   limit = 10
 ): Promise<SearchResult[]> {
-  // Get the API key for embedding generation
   const settings = await prisma.settings.findFirst({
     select: { aiApiKey: true },
   });
@@ -228,7 +229,6 @@ export async function runSimilaritySearch(
     return [];
   }
 
-  // Generate the query embedding
   const queryEmbedding = await generateEmbedding(query, settings.aiApiKey);
 
   if (!queryEmbedding) {
@@ -236,22 +236,11 @@ export async function runSimilaritySearch(
     return [];
   }
 
-  // Format as pgvector literal
   const queryVector = formatVectorLiteral(queryEmbedding);
-
   let results: SearchResult[] = [];
 
   try {
-    // Try database-level similarity search using pgvector
-    const rows = await prisma.$queryRawUnsafe<
-      Array<{
-        id: string;
-        title: string;
-        content: string;
-        category_name: string;
-        score: number;
-      }>
-    >(
+    const rows = await (prisma as any).$queryRawUnsafe(
       `SELECT
          e.id,
          e.title,
@@ -268,7 +257,7 @@ export async function runSimilaritySearch(
       limit
     );
 
-    results = rows.map((row) => ({
+    results = rows.map((row: any) => ({
       id: row.id,
       title: row.title,
       content: row.content,
@@ -276,28 +265,18 @@ export async function runSimilaritySearch(
       score: row.score,
     }));
   } catch (error) {
-    // pgvector query failed — likely migration not run yet
     logger.warn(
       "pgvector query failed, falling back to in-memory similarity:",
       error
     );
   }
 
-  // If pgvector returned fewer results than requested, supplement with
-  // entries that only have metadata.embedding (not migrated to vector column)
   if (results.length < limit) {
     try {
       const additionalEntries = await prisma.knowledgeEntry.findMany({
         where: {
           isActive: true,
           embedding_vector: null,
-          // Must have metadata.embedding
-          NOT: {
-            metadata: {
-              path: ["embedding"],
-              equals: null,
-            },
-          },
         },
         include: {
           category: { select: { name: true } },
@@ -305,13 +284,13 @@ export async function runSimilaritySearch(
         take: limit - results.length,
       });
 
-      const existingIds = new Set(results.map((r) => r.id));
+      const existingIds = new Set(results.map((r: SearchResult) => r.id));
 
       for (const entry of additionalEntries) {
         if (existingIds.has(entry.id)) continue;
 
-        const metadata = entry.metadata as Record<string, unknown> | null;
-        const entryEmbedding = metadata?.embedding as number[] | null;
+        const metadata = (entry.metadata as Record<string, unknown> | null) ?? {};
+        const entryEmbedding = (metadata as Record<string, unknown>).embedding as number[] | null;
 
         if (entryEmbedding) {
           const score = cosineSimilarity(queryEmbedding, entryEmbedding);
@@ -328,15 +307,13 @@ export async function runSimilaritySearch(
         }
       }
 
-      // Re-sort combined results by score
-      results.sort((a, b) => b.score - a.score);
+      results.sort((a: SearchResult, b: SearchResult) => b.score - a.score);
       results = results.slice(0, limit);
     } catch (error) {
       logger.error("Fallback similarity search failed:", error);
     }
   }
 
-  // If we got absolutely nothing from vector search, try plain metadata search
   if (results.length === 0) {
     logger.info("No vector results — falling back to metadata-based search.");
 
@@ -347,8 +324,8 @@ export async function runSimilaritySearch(
       });
 
       for (const entry of allEntries) {
-        const metadata = entry.metadata as Record<string, unknown> | null;
-        const entryEmbedding = metadata?.embedding as number[] | null;
+        const metadata = (entry.metadata as Record<string, unknown> | null) ?? {};
+        const entryEmbedding = (metadata as Record<string, unknown>).embedding as number[] | null;
 
         if (entryEmbedding) {
           const score = cosineSimilarity(queryEmbedding, entryEmbedding);
@@ -364,7 +341,7 @@ export async function runSimilaritySearch(
         }
       }
 
-      results.sort((a, b) => b.score - a.score);
+      results.sort((a: SearchResult, b: SearchResult) => b.score - a.score);
       results = results.slice(0, limit);
     } catch (error) {
       logger.error("Metadata fallback search failed:", error);

@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { chat, createNewConversation } from "@/lib/ai/engine";
 import { resolveCustomer } from "@/lib/customer-resolver";
 import { logger } from "@/lib/logger";
+import { getActiveTenantId } from "@/lib/tenant-prisma";
 
 interface SmsConfig {
   twilioSid: string;
@@ -10,7 +11,10 @@ interface SmsConfig {
 }
 
 async function getSmsConfig(): Promise<SmsConfig | null> {
-  const settings = await prisma.settings.findFirst();
+  const tenantId = getActiveTenantId();
+  const settings = await prisma.settings.findFirst({
+    where: tenantId ? { tenantId } : undefined,
+  });
   if (!settings?.twilioSid || !settings?.twilioToken || !settings?.twilioPhone) return null;
 
   return {
