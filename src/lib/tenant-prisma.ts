@@ -1,6 +1,7 @@
 import { AsyncLocalStorage } from "async_hooks";
 import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient } from "@/generated/prisma/client";
+import type { PrismaClient } from "@/generated/prisma/client";
+import { PrismaClient as PrismaClientClass } from "@/generated/prisma/client";
 
 interface TenantContext {
   tenantId?: string;
@@ -32,9 +33,9 @@ function createTenantPrismaClient() {
 
   const adapter = new PrismaPg({ connectionString });
 
-  const basePrisma = new PrismaClient({
+  const basePrisma = new PrismaClientClass({
     log: [],
-    ...(adapter ? { adapter } : {}),
+    adapter,
   } as any);
 
   return basePrisma.$extends({
@@ -121,10 +122,10 @@ function getTenantPrismaClient() {
   return tenantPrismaClient;
 }
 
-export const tenantPrisma = new Proxy({} as Record<string, unknown>, {
+export const tenantPrisma = new Proxy({} as PrismaClient, {
   get(_target, prop) {
     const client = getTenantPrismaClient();
-    const value = (client as Record<string, unknown>)[prop as string];
+    const value = client[prop as keyof PrismaClient];
     if (typeof value === "function") {
       return value.bind(client);
     }
