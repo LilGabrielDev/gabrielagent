@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import { prisma } from "@/lib/prisma";
+import { ensureDefaultTenant } from "@/lib/default-tenant";
 import { gabrielTools, executeToolCall } from "./tools";
 import { emitNewMessage } from "@/lib/realtime";
 import { analyzeSentiment, detectIntent, estimateConfidence, requiresHumanApproval } from "./guardrails";
@@ -79,7 +80,8 @@ async function getKnowledgeBase(): Promise<KnowledgeItem[]> {
 async function getAIConfig(): Promise<AIConfig & ConversationContext> {
   let settings = await prisma.settings.findFirst();
   if (!settings) {
-    settings = await prisma.settings.create({ data: { id: "default" } });
+    const tenant = await ensureDefaultTenant();
+    settings = await prisma.settings.create({ data: { tenantId: tenant.id } });
   }
 
   return {

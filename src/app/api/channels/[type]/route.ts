@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 import { requireAuth, isAuthenticated } from "@/lib/route-auth";
+import { ensureDefaultTenant, channelLookup, resolveTenantId } from "@/lib/default-tenant";
 import { disconnectWhatsApp, getWhatsAppStatus } from "@/lib/channels/whatsapp";
 
 const CHANNEL_TYPES = ["whatsapp", "email", "phone", "sms", "telegram", "widget"];
@@ -22,8 +23,11 @@ export async function GET(request: NextRequest, context: RouteContext) {
       );
     }
 
+    const tenant = await ensureDefaultTenant();
+    const tenantId = resolveTenantId(auth.tenantId ?? tenant.id);
+
     const channel = await prisma.channel.findUnique({
-      where: { type },
+      where: channelLookup(type, tenantId),
     });
 
     if (!channel) {
@@ -65,8 +69,11 @@ export async function PUT(request: NextRequest, context: RouteContext) {
     const body = await request.json();
     const { isActive, config, status } = body;
 
+    const tenant = await ensureDefaultTenant();
+    const tenantId = resolveTenantId(auth.tenantId ?? tenant.id);
+
     const channel = await prisma.channel.upsert({
-      where: { type },
+      where: channelLookup(type, tenantId),
       update: {
         isActive: typeof isActive === "boolean" ? isActive : undefined,
         config: config ?? undefined,
@@ -74,6 +81,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
       },
       create: {
         type,
+        tenantId,
         isActive: typeof isActive === "boolean" ? isActive : false,
         config: config ?? {},
         status: status ?? "disconnected",
@@ -114,16 +122,21 @@ export async function POST(request: NextRequest, context: RouteContext) {
       );
     }
 
-    const channel = await prisma.channel.findUnique({ where: { type } });
+    const tenant = await ensureDefaultTenant();
+    const tenantId = resolveTenantId(auth.tenantId ?? tenant.id);
+    const channelWhere = channelLookup(type, tenantId);
+
+    const channel = await prisma.channel.findUnique({ where: channelWhere });
 
     if (action === "disconnect") {
       if (type === "whatsapp") {
         const status = await disconnectWhatsApp();
         const updated = await prisma.channel.upsert({
-          where: { type },
+          where: channelWhere,
           update: { status: "disconnected", isActive: false },
           create: {
             type,
+            tenantId,
             isActive: false,
             config: {},
             status: "disconnected",
@@ -136,10 +149,11 @@ export async function POST(request: NextRequest, context: RouteContext) {
       }
 
       const updated = await prisma.channel.upsert({
-        where: { type },
+        where: channelWhere,
         update: { status: "disconnected" },
         create: {
           type,
+          tenantId,
           isActive: false,
           config: {},
           status: "disconnected",
@@ -155,13 +169,14 @@ export async function POST(request: NextRequest, context: RouteContext) {
       if (type === "whatsapp") {
         const remoteStatus = await getWhatsAppStatus();
         const updated = await prisma.channel.upsert({
-          where: { type },
+          where: channelWhere,
           update: {
             status: remoteStatus.status,
             isActive: remoteStatus.status === "connected",
           },
           create: {
             type,
+            tenantId,
             isActive: remoteStatus.status === "connected",
             config: {},
             status: remoteStatus.status,
@@ -184,7 +199,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       }
 
       const updated = await prisma.channel.update({
-        where: { type },
+        where: channelWhere,
         data: { status: "connected", isActive: true },
       });
 

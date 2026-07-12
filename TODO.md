@@ -7,6 +7,7 @@
 - [x] Step 3: Add tenant-aware Prisma helpers/utilities to centralize tenant-scoped queries
 
 - [ ] Step 4: Extend RBAC middleware AuthContext to include tenantId and enforce tenant match at authorization boundaries
+
 - [ ] Step 5: Add Telegram channel module (webhook verify + handler + outbound send) using tenant-scoped settings and conversation creation
 - [ ] Step 6: Add SMS channel module (inbound webhook + outbound send) using tenant-scoped Twilio settings
 - [ ] Step 7: Wire Next.js webhook routes for Telegram and SMS; ensure signature/verification where applicable

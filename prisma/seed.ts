@@ -13,7 +13,22 @@ const connectionString =
 const adapter = new PrismaNeon({ connectionString });
 const prisma = new PrismaClient({ adapter });
 
+const DEFAULT_TENANT_ID = "default-tenant";
+
 async function main() {
+  const tenant = await prisma.tenant.upsert({
+    where: { id: DEFAULT_TENANT_ID },
+    update: {},
+    create: {
+      id: DEFAULT_TENANT_ID,
+      name: "Default Tenant",
+      domain: "localhost",
+      logo: "/gabriel.png",
+      primaryColor: "#0F172A",
+      isActive: true,
+    },
+  });
+
   // Create default admin (password: admin123)
   const hashedPassword = await bcrypt.hash("admin123", 12);
   await prisma.admin.upsert({
@@ -22,21 +37,23 @@ async function main() {
       password: hashedPassword,
       name: "Administrator",
       role: "admin",
+      tenantId: tenant.id,
     },
     create: {
       username: "admin",
       password: hashedPassword,
       name: "Administrator",
       role: "admin",
+      tenantId: tenant.id,
     },
   });
 
   // Create default settings
   await prisma.settings.upsert({
-    where: { id: "default" },
+    where: { tenantId: tenant.id },
     update: {},
     create: {
-      id: "default",
+      tenantId: tenant.id,
       businessName: "My Business",
       businessDesc: "We provide excellent products and services.",
       welcomeMessage: "Hello! Welcome to our support. How can I help you today?",
@@ -48,9 +65,9 @@ async function main() {
   // Create default channels
   for (const type of ["whatsapp", "email", "phone"]) {
     await prisma.channel.upsert({
-      where: { type },
+      where: { type_tenantId: { type, tenantId: tenant.id } },
       update: {},
-      create: { type, isActive: false, status: "disconnected" },
+      create: { type, tenantId: tenant.id, isActive: false, status: "disconnected" },
     });
   }
 
@@ -58,7 +75,7 @@ async function main() {
   await prisma.businessHours.upsert({
     where: { id: "default" },
     update: {},
-    create: { id: "default" },
+    create: { id: "default", tenantId: tenant.id },
   });
 
   // Create sample departments
@@ -67,6 +84,7 @@ async function main() {
     update: {},
     create: {
       id: "dept-tech",
+      tenantId: tenant.id,
       name: "Technical Support",
       description: "Handles technical issues, bugs, and product troubleshooting",
       email: "tech@example.com",
@@ -78,6 +96,7 @@ async function main() {
     update: {},
     create: {
       id: "dept-sales",
+      tenantId: tenant.id,
       name: "Sales",
       description: "Handles pricing, quotes, and purchase inquiries",
       email: "sales@example.com",
@@ -89,6 +108,7 @@ async function main() {
     update: {},
     create: {
       id: "dept-billing",
+      tenantId: tenant.id,
       name: "Billing",
       description: "Handles invoices, payments, and refunds",
       email: "billing@example.com",
@@ -107,7 +127,7 @@ async function main() {
     await prisma.teamMember.upsert({
       where: { id: m.id },
       update: {},
-      create: m,
+      create: { ...m, tenantId: tenant.id },
     });
   }
 
@@ -156,7 +176,11 @@ async function main() {
   ];
 
   for (const cr of cannedResponses) {
-    await prisma.cannedResponse.upsert({ where: { id: cr.id }, update: {}, create: cr });
+    await prisma.cannedResponse.upsert({
+      where: { id: cr.id },
+      update: {},
+      create: { ...cr, tenantId: tenant.id },
+    });
   }
 
   // Create sample SLA rules
@@ -166,7 +190,11 @@ async function main() {
   ];
 
   for (const sla of slaRules) {
-    await prisma.sLARule.upsert({ where: { id: sla.id }, update: {}, create: sla });
+    await prisma.sLARule.upsert({
+      where: { id: sla.id },
+      update: {},
+      create: { ...sla, tenantId: tenant.id },
+    });
   }
 
   console.log("Seed data created successfully!");

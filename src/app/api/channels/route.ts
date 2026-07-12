@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import type { Channel } from "@/generated/prisma/client";
+import { tenantPrisma } from "@/lib/tenant-prisma";
 import { logger } from "@/lib/logger";
 import { requireAuth, isAuthenticated } from "@/lib/route-auth";
 import { getWhatsAppStatus, isWhatsAppServiceConfigured } from "@/lib/channels/whatsapp";
@@ -9,13 +10,16 @@ const CHANNEL_TYPES = ["whatsapp", "email", "phone", "sms", "telegram", "widget"
 export async function GET(request: NextRequest) {
   const auth = await requireAuth(request, "channels:read");
   if (!isAuthenticated(auth)) return auth;
+  const tenantId = auth.tenantId;
+  if (!isAuthenticated(auth)) return auth;
 
   try {
-    const channels = await prisma.channel.findMany({
+    const channels = await tenantPrisma.channel.findMany({
+      where: { tenantId },
       orderBy: { type: "asc" },
     });
 
-    const channelMap = new Map(channels.map((ch) => [ch.type, ch]));
+    const channelMap = new Map(channels.map((ch: Channel) => [ch.type, ch]));
 
     let whatsappRemoteStatus: Awaited<ReturnType<typeof getWhatsAppStatus>> | null = null;
     if (isWhatsAppServiceConfigured()) {
@@ -62,6 +66,8 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const auth = await requireAuth(request, "channels:update");
   if (!isAuthenticated(auth)) return auth;
+  const tenantId = auth.tenantId;
+  if (!isAuthenticated(auth)) return auth;
 
   try {
     const body = await request.json();
@@ -74,14 +80,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const channel = await prisma.channel.upsert({
-      where: { type },
+    const channel = await tenantPrisma.channel.upsert({
+      where: { type_tenantId: { type, tenantId: tenantId as string } },
       update: {
         isActive: typeof isActive === "boolean" ? isActive : undefined,
         config: config ?? undefined,
       },
       create: {
         type,
+        tenantId: tenantId as string,
         isActive: typeof isActive === "boolean" ? isActive : false,
         config: config ?? {},
         status: "disconnected",

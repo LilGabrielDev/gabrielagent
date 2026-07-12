@@ -2,19 +2,23 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 import { requireAuth, isAuthenticated } from "@/lib/route-auth";
+import { ensureDefaultTenant, resolveTenantId } from "@/lib/default-tenant";
 
 export async function GET(request: NextRequest) {
   const auth = await requireAuth(request, "business-hours:read");
   if (!isAuthenticated(auth)) return auth;
 
   try {
+    const tenant = await ensureDefaultTenant();
+    const tenantId = resolveTenantId(auth.tenantId ?? tenant.id);
+
     let config = await prisma.businessHours.findUnique({
       where: { id: "default" },
     });
 
     if (!config) {
       config = await prisma.businessHours.create({
-        data: { id: "default" },
+        data: { id: "default", tenantId },
       });
     }
 
@@ -59,6 +63,9 @@ export async function PUT(request: NextRequest) {
       }
     }
 
+    const tenant = await ensureDefaultTenant();
+    const tenantId = resolveTenantId(auth.tenantId ?? tenant.id);
+
     const config = await prisma.businessHours.upsert({
       where: { id: "default" },
       update: {
@@ -75,6 +82,7 @@ export async function PUT(request: NextRequest) {
       },
       create: {
         id: "default",
+        tenantId,
         enabled: enabled ?? false,
         timezone: timezone ?? "UTC",
         monday: monday ?? "09:00-18:00",

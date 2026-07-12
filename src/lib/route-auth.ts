@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyToken } from "@/lib/auth";
 import { hasPermission, Permission } from "@/lib/rbac";
 import { prisma } from "@/lib/prisma";
+import { runWithTenantContext } from "@/lib/tenant-prisma";
 
 interface AuthContext {
   userId: string;
   role: string;
   username: string;
   name: string;
+  tenantId?: string; // Add tenantId
   authMethod: "cookie" | "api_key";
 }
 
@@ -17,6 +19,7 @@ interface AuthContext {
 async function authenticateApiKey(apiKey: string): Promise<AuthContext | null> {
   const key = await prisma.apiKey.findUnique({
     where: { key: apiKey },
+    include: { tenant: true }, // Include tenant information
   });
 
   if (!key || !key.isActive) return null;
@@ -33,6 +36,7 @@ async function authenticateApiKey(apiKey: string): Promise<AuthContext | null> {
     role: "admin",
     username: key.name,
     name: key.name,
+    tenantId: key.tenantId || undefined, // Include tenantId
     authMethod: "api_key",
   };
 }
@@ -44,7 +48,8 @@ async function authenticateApiKey(apiKey: string): Promise<AuthContext | null> {
  */
 export async function requireAuth(
   request: NextRequest,
-  permission?: Permission
+  permission?: Permission,
+  tenantScoped: boolean = true // New parameter to control tenant scoping
 ): Promise<AuthContext | NextResponse> {
   // Try API key auth first
   const apiKey = request.headers.get("x-api-key");
@@ -64,6 +69,10 @@ export async function requireAuth(
       );
     }
 
+    // If tenant scoping is enabled, run the rest of the request in tenant context
+    if (tenantScoped && context.tenantId) {
+      return runWithTenantContext(context.tenantId, () => context);
+    }
     return context;
   }
 
@@ -85,16 +94,9 @@ export async function requireAuth(
     );
   }
 
-  if (permission && !hasPermission(payload.role, permission)) {
-    return NextResponse.json(
-      { error: { code: "FORBIDDEN", message: "Insufficient permissions" } },
-      { status: 403 }
-    );
-  }
-
   const admin = await prisma.admin.findUnique({
     where: { id: payload.userId },
-    select: { id: true, username: true, name: true, role: true },
+    select: { id: true, username: true, name: true, role: true, tenantId: true }, // Include tenantId
   });
 
   if (!admin) {
@@ -104,13 +106,28 @@ export async function requireAuth(
     );
   }
 
-  return {
+  if (permission && !hasPermission(payload.role, permission)) {
+    return NextResponse.json(
+      { error: { code: "FORBIDDEN", message: "Insufficient permissions" } },
+      { status: 403 }
+    );
+  }
+
+  const authContext: AuthContext = {
     userId: admin.id,
     role: admin.role,
     username: admin.username,
     name: admin.name,
+    tenantId: admin.tenantId || undefined,
     authMethod: "cookie",
   };
+
+  // If tenant scoping is enabled, run the rest of the request in tenant context
+  if (tenantScoped && authContext.tenantId) {
+    return runWithTenantContext(authContext.tenantId, () => authContext);
+  }
+
+  return authContext;
 }
 
 /**

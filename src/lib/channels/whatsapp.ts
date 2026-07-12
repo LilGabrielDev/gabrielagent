@@ -382,7 +382,7 @@ async function saveSessionToFrontendDB(payload: Partial<RemoteStatusResponse> & 
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
-  } catch (err) {
+  } catch {
     // silent: persistence is best-effort and should not break frontend flows
   }
 }

@@ -11,7 +11,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { verifyToken } from "@/lib/auth";
-import { hasMinRole, hasPermission, ROLES, type Role, type Permission } from "@/lib/rbac";
+import { hasMinRole, hasPermission, type Role, type Permission } from "@/lib/rbac";
 import { prisma } from "@/lib/prisma";
 
 interface AuthContext {
@@ -22,9 +22,11 @@ interface AuthContext {
   tenantId?: string | null;
 }
 
+
 /**
  * Authenticate via API key (X-API-Key header).
  */
+
 async function authenticateApiKey(apiKey: string): Promise<AuthContext | null> {
   const key = await prisma.apiKey.findUnique({
     where: { key: apiKey, isActive: true },

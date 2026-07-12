@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import OpenAI from "openai";
 import { logger } from "@/lib/logger";
 import { requireAuth, isAuthenticated } from "@/lib/route-auth";
+import { ensureDefaultTenant, channelLookup, resolveTenantId } from "@/lib/default-tenant";
 
 export async function POST(request: NextRequest) {
   const auth = await requireAuth(request, "knowledge:read");
@@ -19,9 +20,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const tenant = await ensureDefaultTenant();
+    const tenantId = resolveTenantId(auth.tenantId ?? tenant.id);
+
     // Load settings for AI configuration
     const settings = await prisma.settings.findUnique({
-      where: { id: "default" },
+      where: { tenantId },
     });
 
     if (!settings?.aiApiKey) {

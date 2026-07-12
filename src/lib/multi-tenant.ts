@@ -10,6 +10,8 @@
  * In multi-tenant mode, tenants are resolved from the database or env vars.
  */
 
+import type { Settings } from "@/generated/prisma/client";
+
 export interface TenantConfig {
   id: string;
   name: string;
@@ -19,6 +21,7 @@ export interface TenantConfig {
   customDomain: string;
   isActive: boolean;
   config: Record<string, unknown>;
+  settings?: Settings;
 }
 
 export interface TenantBranding {
@@ -61,6 +64,7 @@ export async function getTenantByDomain(
         isActive: true,
         OR: [{ domain: hostname }, { customDomain: hostname }],
       },
+      include: { settings: true },
     });
     if (tenant) {
       return {
@@ -72,6 +76,7 @@ export async function getTenantByDomain(
         customDomain: tenant.customDomain || "",
         isActive: tenant.isActive,
         config: (tenant.config as Record<string, unknown>) || {},
+        settings: tenant.settings || undefined,
       };
     }
   } catch {
@@ -107,6 +112,7 @@ export async function getTenantConfig(
     customDomain: "",
     isActive: true,
     config: {},
+    settings: undefined,
   };
 }
 

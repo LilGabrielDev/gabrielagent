@@ -122,7 +122,7 @@ export class WhatsAppSessionManager {
   async pair(sessionId: string, phoneNumber: string): Promise<string> {
     const current = this.sessions.get(sessionId);
     if (!current) {
-      const created = await this.createSession(sessionId, "baileys", phoneNumber);
+      await this.createSession(sessionId, "baileys", phoneNumber);
       return await this.pair(sessionId, phoneNumber);
     }
 

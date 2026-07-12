@@ -9,6 +9,7 @@ import {
   getCurrentUser,
   isSetupComplete,
 } from "@/lib/auth";
+import { ensureDefaultTenant } from "@/lib/default-tenant";
 
 // POST /api/auth - Login or Setup
 export async function POST(request: NextRequest) {
@@ -31,6 +32,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const tenant = await ensureDefaultTenant();
     const hashed = await hashPassword(password);
     const admin = await prisma.admin.create({
       data: {
@@ -38,22 +40,23 @@ export async function POST(request: NextRequest) {
         password: hashed,
         name: name || "Admin",
         role: "admin",
+        tenantId: tenant.id,
       },
     });
 
     // Ensure default settings exist
     await prisma.settings.upsert({
-      where: { id: "default" },
+      where: { tenantId: tenant.id },
       update: {},
-      create: { id: "default" },
+      create: { tenantId: tenant.id },
     });
 
     // Ensure channels exist
     for (const type of ["whatsapp", "email", "phone"]) {
       await prisma.channel.upsert({
-        where: { type },
+        where: { type_tenantId: { type, tenantId: tenant.id } },
         update: {},
-        create: { type, isActive: false, status: "disconnected" },
+        create: { type, tenantId: tenant.id, isActive: false, status: "disconnected" },
       });
     }
 

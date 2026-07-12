@@ -4,19 +4,23 @@ import { maskSettingsSecrets } from "@/lib/security";
 import { updateSettingsSchema, validateBody } from "@/lib/validations";
 import { logger } from "@/lib/logger";
 import { requireAuth, isAuthenticated } from "@/lib/route-auth";
+import { ensureDefaultTenant, resolveTenantId } from "@/lib/default-tenant";
 
 export async function GET(request: NextRequest) {
   const auth = await requireAuth(request, "settings:read");
   if (!isAuthenticated(auth)) return auth;
 
   try {
+    const tenant = await ensureDefaultTenant();
+    const tenantId = resolveTenantId(auth.tenantId ?? tenant.id);
+
     let settings = await prisma.settings.findUnique({
-      where: { id: "default" },
+      where: { tenantId },
     });
 
     if (!settings) {
       settings = await prisma.settings.create({
-        data: { id: "default" },
+        data: { tenantId },
       });
     }
 
@@ -47,10 +51,13 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: validation.error }, { status: 400 });
     }
 
+    const tenant = await ensureDefaultTenant();
+    const tenantId = resolveTenantId(auth.tenantId ?? tenant.id);
+
     const settings = await prisma.settings.upsert({
-      where: { id: "default" },
+      where: { tenantId },
       update: validation.data,
-      create: { id: "default", ...validation.data },
+      create: { tenantId, ...validation.data },
     });
 
     return NextResponse.json(maskSettingsSecrets(settings));

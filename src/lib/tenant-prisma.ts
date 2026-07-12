@@ -1,33 +1,113 @@
-import { prisma } from "@/lib/prisma";
-import { getTenantConfig } from "@/lib/multi-tenant";
+import { PrismaClient } from "@/generated/prisma/client";
+import { AsyncLocalStorage } from "async_hooks";
 
-/**
- * Resolve tenantId from hostname.
- * Falls back to "default" if tenant cannot be resolved.
- */
-export async function resolveTenantIdFromHostname(
-  hostname?: string
-): Promise<string> {
-  const tenant = await getTenantConfig(hostname);
-  return tenant?.id || "default";
+const prisma = new PrismaClient();
+
+interface TenantContext {
+  tenantId?: string;
 }
 
-/**
- * Fetch tenant-bound settings.
- * NOTE: This repo currently has a single global `Settings` row;
- * this helper centralizes tenant routing so you can swap to
- * tenant-scoped settings later.
- */
-export async function getTenantSettings(_tenantId: string) {
-  return prisma.settings.findFirst();
-}
+const asyncLocalStorage = new AsyncLocalStorage<TenantContext>();
 
-/**
- * Central helper to create tenant-scoped Prisma queries.
- * Pattern: use `tenantId` in where clauses.
- */
-export function tenantWhere<T extends object>(tenantId: string, where: T): T {
-  // At runtime we can't validate schema columns; just merge.
-  return { ...(where as object), tenantId } as T;
-}
+export const tenantPrisma = prisma.$extends({
+  query: {
+    $allModels: {
+      async findMany({
+        model, args, query
+      }) {
+        const store = asyncLocalStorage.getStore();
+        if (store?.tenantId && model !== 'Tenant' && model !== 'Settings') {
+          args.where = {
+            ...args.where,
+            tenantId: store.tenantId,
+          };
+        }
+        return query(args);
+      },
+      async findFirst({
+        model, args, query
+      }) {
+        const store = asyncLocalStorage.getStore();
+        if (store?.tenantId && model !== 'Tenant' && model !== 'Settings') {
+          args.where = {
+            ...args.where,
+            tenantId: store.tenantId,
+          };
+        }
+        return query(args);
+      },
+      async findUnique({
+        model, args, query
+      }) {
+        const store = asyncLocalStorage.getStore();
+        if (store?.tenantId && model !== 'Tenant' && model !== 'Settings') {
+          args.where = {
+            ...args.where,
+            tenantId: store.tenantId,
+          };
+        }
+        return query(args);
+      },
+      async create({
+        model, args, query
+      }) {
+        const store = asyncLocalStorage.getStore();
+        if (store?.tenantId && model !== 'Tenant' && model !== 'Settings') {
+          args.data = {
+            ...args.data,
+            tenantId: store.tenantId,
+          };
+        }
+        return query(args);
+      },
+      async update({
+        model, args, query
+      }) {
+        const store = asyncLocalStorage.getStore();
+        if (store?.tenantId && model !== 'Tenant' && model !== 'Settings') {
+          args.where = {
+            ...args.where,
+            tenantId: store.tenantId,
+          };
+        }
+        return query(args);
+      },
+      async delete({
+        model, args, query
+      }) {
+        const store = asyncLocalStorage.getStore();
+        if (store?.tenantId && model !== 'Tenant' && model !== 'Settings') {
+          args.where = {
+            ...args.where,
+            tenantId: store.tenantId,
+          };
+        }
+        return query(args);
+      },
+      async upsert({
+        model, args, query
+      }) {
+        const store = asyncLocalStorage.getStore();
+        if (store?.tenantId && model !== 'Tenant' && model !== 'Settings') {
+          args.where = {
+            ...args.where,
+            tenantId: store.tenantId,
+          };
+          args.create = {
+            ...args.create,
+            tenantId: store.tenantId,
+          };
+          args.update = {
+            ...args.update,
+            tenantId: store.tenantId,
+          };
+        }
+        return query(args);
+      },
+    },
+  },
+});
 
+export function runWithTenantContext<R>(tenantId: string | undefined, fn: () => R): R {
+  return asyncLocalStorage.run({ tenantId }, fn);
+}

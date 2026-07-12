@@ -41,13 +41,8 @@ test('the pairing page exposes the socket client script and the session API work
     stdio: ['ignore', 'pipe', 'pipe'],
   });
 
-  let output = '';
-  child.stdout.on('data', (chunk) => {
-    output += chunk.toString();
-  });
-  child.stderr.on('data', (chunk) => {
-    output += chunk.toString();
-  });
+  child.stdout.on('data', () => {});
+  child.stderr.on('data', () => {});
 
   try {
     await waitForServer(`http://127.0.0.1:${port}/health`);

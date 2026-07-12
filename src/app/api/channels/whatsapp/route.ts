@@ -6,6 +6,7 @@ import {
 } from "@/lib/channels/whatsapp";
 import { prisma } from "@/lib/prisma";
 import { requireAuth, isAuthenticated } from "@/lib/route-auth";
+import { ensureDefaultTenant, channelLookup, resolveTenantId } from "@/lib/default-tenant";
 
 export const dynamic = "force-dynamic";
 
@@ -14,10 +15,11 @@ type WhatsAppMode = "web" | "pairing" | "api";
 async function upsertWhatsAppChannel(
   status: Awaited<ReturnType<typeof getWhatsAppStatus>>,
   mode: WhatsAppMode,
+  tenantId: string,
   config: Record<string, unknown> = {}
 ) {
   return prisma.channel.upsert({
-    where: { type: "whatsapp" },
+    where: channelLookup("whatsapp", tenantId),
     update: {
       isActive: status.status === "connected",
       status: status.status,
@@ -30,6 +32,7 @@ async function upsertWhatsAppChannel(
     },
     create: {
       type: "whatsapp",
+      tenantId,
       isActive: status.status === "connected",
       status: status.status,
       config: {
@@ -55,6 +58,8 @@ export async function POST(request: NextRequest) {
   if (!isAuthenticated(auth)) return auth;
 
   try {
+    const tenant = await ensureDefaultTenant();
+    const tenantId = resolveTenantId(auth.tenantId ?? tenant.id);
     const body = await request.json();
     const { action, mode, phoneNumber, apiKey } = body as {
       action?: string;
@@ -82,7 +87,7 @@ export async function POST(request: NextRequest) {
         }
 
         const status = await initWhatsApp("api", phoneNumber);
-        await upsertWhatsAppChannel(status, "api", { apiKey, phoneNumber });
+        await upsertWhatsAppChannel(status, "api", tenantId, { apiKey, phoneNumber });
         return NextResponse.json({
           ...status,
           status: "connected",
@@ -91,7 +96,7 @@ export async function POST(request: NextRequest) {
       }
 
       const status = await initWhatsApp(connectMode, phoneNumber);
-      await upsertWhatsAppChannel(status, connectMode);
+      await upsertWhatsAppChannel(status, connectMode, tenantId);
       return NextResponse.json(status, {
         status: status.status === "error" ? 502 : 200,
       });
@@ -100,20 +105,22 @@ export async function POST(request: NextRequest) {
     if (action === "disconnect") {
       const status = await disconnectWhatsApp();
       await prisma.channel.upsert({
-        where: { type: "whatsapp" },
+        where: channelLookup("whatsapp", tenantId),
         update: { isActive: false, status: "disconnected" },
-        create: { type: "whatsapp", isActive: false, status: "disconnected" },
+        create: { type: "whatsapp", tenantId, isActive: false, status: "disconnected" },
       });
       return NextResponse.json({ ...status, message: "WhatsApp disconnected" });
     }
 
     if (action === "sync") {
       const status = await getWhatsAppStatus();
-      const channel = await prisma.channel.findUnique({ where: { type: "whatsapp" } });
+      const channel = await prisma.channel.findUnique({
+        where: channelLookup("whatsapp", tenantId),
+      });
       const savedMode =
         (channel?.config as { mode?: WhatsAppMode } | null)?.mode || status.mode;
 
-      await upsertWhatsAppChannel(status, savedMode);
+      await upsertWhatsAppChannel(status, savedMode, tenantId);
       return NextResponse.json(status);
     }
 

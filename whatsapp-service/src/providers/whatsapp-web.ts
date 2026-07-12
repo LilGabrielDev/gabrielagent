@@ -3,10 +3,10 @@ const { Client, LocalAuth } = pkg;
 import { WhatsAppProvider, type SessionStatus } from "./base.js";
 import QRCode from "qrcode";
 import { logger } from "../logger.js";
-import path from "node:path";
+type WhatsAppClient = InstanceType<typeof Client>;
 
 export class WhatsAppWebProvider extends WhatsAppProvider {
-  private client: any;
+  private client: WhatsAppClient | null = null;
   private status: SessionStatus = "initializing";
   private qr: string | null = null;
   private pairingCode: string | null = null;
@@ -65,9 +65,10 @@ export class WhatsAppWebProvider extends WhatsAppProvider {
 
     try {
       await this.client.initialize();
-    } catch (err: any) {
+    } catch (err: unknown) {
       this.status = "failed";
-      this.emitEvent("error", { error: err.message });
+      const message = err instanceof Error ? err.message : "Failed to initialize WhatsApp client";
+      this.emitEvent("error", { error: message });
       throw err;
     }
   }
@@ -77,15 +78,20 @@ export class WhatsAppWebProvider extends WhatsAppProvider {
     this.phoneNumber = phoneNumber;
     this.emitEvent("status", { phoneNumber });
     
+    if (!this.client) {
+      throw new Error("WhatsApp client is not initialized");
+    }
+
     try {
       const code = await this.client.requestPairingCode(phoneNumber);
       this.pairingCode = code;
       this.status = "waiting_qr"; // whatsapp-web.js uses the same flow but returns code
       this.emitEvent("pairing", { pairingCode: code });
       return code;
-    } catch (err: any) {
+    } catch (err: unknown) {
       this.status = "failed";
-      this.emitEvent("error", { error: err.message });
+      const message = err instanceof Error ? err.message : "Failed to request pairing code";
+      this.emitEvent("error", { error: message });
       throw err;
     }
   }
