@@ -257,7 +257,7 @@ export const pairingPageHtml = `<!DOCTYPE html>
     </button>
 
     <div class="footer">
-      <p>© 2026 Lil Gabriel | Gabriel Agent</p>
+      <p>© 2026 Lil-Gabriel | Gabriel Agent</p>
     </div>
   </div>
 

@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: gabriel-whatsapp-service
+    name: gabrielagent
     runtime: docker
     rootDir: whatsapp-service
     plan: starter
@@ -28,7 +28,7 @@ services:
       - key: FRONTEND_URL
         value: https://gabrielagent.vercel.app
       - key: BACKEND_URL
-        value: https://gabriel-whatsapp-service.onrender.com
+        value: https://gabrielagent.onrender.com
       - key: AUTO_UPDATE_ENABLED
         value: false
       - key: AUTO_UPDATE_RESTART
