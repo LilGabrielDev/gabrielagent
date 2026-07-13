@@ -1,5 +1,5 @@
 import { AsyncLocalStorage } from "async_hooks";
-import { PrismaPg } from "@prisma/adapter-pg";
+import { PrismaNeon } from "@prisma/adapter-neon";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { PrismaClient as PrismaClientClass } from "@/generated/prisma/client";
 
@@ -31,7 +31,7 @@ function createTenantPrismaClient() {
     process.env["DIRECT_URL"] ||
     "postgresql://postgres:postgres@localhost:5432/gabriel?schema=public";
 
-  const adapter = new PrismaPg({ connectionString });
+  const adapter = new PrismaNeon({ connectionString });
 
   const basePrisma = new PrismaClientClass({
     log: [],
